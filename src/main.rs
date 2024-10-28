@@ -3,8 +3,14 @@ use bevy_flycam::{FlyCam, NoCameraPlayerPlugin};
 use bevy_rapier3d::{plugin::RapierPhysicsPlugin, prelude::{Collider, RigidBody}, render::RapierDebugRenderPlugin};
 use plugin::SalvaPhysicsPlugin;
 use salva3d::solver::DFSPHSolver;
+use utils::cube_fluid;
 
 mod plugin;
+mod fluid;
+mod utils;
+
+pub const DEFAULT_PARTICLE_RADIUS: salva3d::math::Real = 0.05;
+pub const DEFAULT_SMOOTHING_FACTOR: salva3d::math::Real = 2.0;
 
 fn main() {
     let mut app = App::new();
@@ -19,7 +25,8 @@ fn main() {
     ));
 
     app.add_systems(Startup, startup);
-
+    
+    let fluid = cube_fluid(10, 10, 10, DEFAULT_PARTICLE_RADIUS, 1000.);
     app.run();
 }
 

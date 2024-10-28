@@ -14,13 +14,16 @@ pub struct SalvaPhysicsPlugin<S: PressureSolver + Send + Sync + 'static> {
 
 impl<S: PressureSolver + Send + Sync + 'static> SalvaPhysicsPlugin<S> {
 
+    pub const DEFAULT_PARTICLE_RADIUS: Real = 0.05;
+    pub const DEFAULT_SMOOTHING_FACTOR: Real = 2.0;
+
     pub fn new(solver: S) -> Self {
         Self {
             schedule: PostUpdate.intern(),
             default_rapier_coupling_config: true,
             solver,
-            particle_radius: 0.05,
-            smoothing_factor: 2.0,
+            particle_radius: Self::DEFAULT_PARTICLE_RADIUS,
+            smoothing_factor: Self::DEFAULT_SMOOTHING_FACTOR,
         }
     }
 
@@ -71,7 +74,8 @@ pub struct SalvaContext {
 
 impl<S: PressureSolver + Send + Sync + 'static> Plugin for SalvaPhysicsPlugin<S> {
     fn build(&self, app: &mut bevy::prelude::App) {
-        // SAFETY: this is fine because self.solver is private, meaning that self.solver cannot be accessed after the app closes
+        // SAFETY: this is fine because self.solver is private, meaning that 
+        //         self.solver cannot be accessed after the app closes
         let solver: S = unsafe { std::mem::transmute_copy(&self.solver)};
 
         if self.default_rapier_coupling_config {
