@@ -1,6 +1,6 @@
-use bevy::{app::{App, Startup}, prelude::{Camera3dBundle, Commands, Transform}, DefaultPlugins};
+use bevy::{app::{App, Startup}, prelude::{Bundle, Camera3dBundle, Commands, Transform}, DefaultPlugins};
 use bevy_flycam::{FlyCam, NoCameraPlayerPlugin};
-use bevy_rapier3d::{plugin::RapierPhysicsPlugin, prelude::{Collider, RigidBody}, render::RapierDebugRenderPlugin};
+use bevy_rapier3d::{plugin::{systems::init_colliders, RapierPhysicsPlugin}, prelude::{Collider, RigidBody}, render::RapierDebugRenderPlugin};
 use plugin::SalvaPhysicsPlugin;
 use salva3d::solver::DFSPHSolver;
 use utils::cube_fluid;
@@ -8,6 +8,7 @@ use utils::cube_fluid;
 mod plugin;
 mod fluid;
 mod utils;
+mod systems;
 
 pub const DEFAULT_PARTICLE_RADIUS: salva3d::math::Real = 0.05;
 pub const DEFAULT_SMOOTHING_FACTOR: salva3d::math::Real = 2.0;
@@ -23,6 +24,7 @@ fn main() {
         SalvaPhysicsPlugin::new(fluid_solver),
         NoCameraPlayerPlugin
     ));
+    
 
     app.add_systems(Startup, startup);
     
