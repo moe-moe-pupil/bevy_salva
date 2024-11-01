@@ -1,9 +1,10 @@
-use bevy::{app::{App, Startup}, prelude::{Bundle, Camera3dBundle, Commands, Transform}, DefaultPlugins};
+use bevy::{app::{App, Startup}, prelude::{Bundle, Camera3dBundle, Commands, Res, Transform}, DefaultPlugins};
 use bevy_flycam::{FlyCam, NoCameraPlayerPlugin};
 use bevy_rapier3d::{plugin::{systems::init_colliders, RapierPhysicsPlugin}, prelude::{Collider, RigidBody}, render::RapierDebugRenderPlugin};
-use plugin::SalvaPhysicsPlugin;
+use fluid::FluidParticlePositions;
+use plugin::{SalvaContext, SalvaPhysicsPlugin};
 use salva3d::solver::DFSPHSolver;
-use utils::cube_fluid;
+use utils::cube_particle_positions;
 
 mod plugin;
 mod fluid;
@@ -28,12 +29,13 @@ fn main() {
 
     app.add_systems(Startup, startup);
     
-    let fluid = cube_fluid(10, 10, 10, DEFAULT_PARTICLE_RADIUS, 1000.);
+    let fluid = cube_particle_positions(10, 10, 10, DEFAULT_PARTICLE_RADIUS);
     app.run();
 }
 
 fn startup(
-    mut commands: Commands
+    mut commands: Commands,
+    salva_ctx: Res<SalvaContext>
 ) {
     commands.spawn((
         Camera3dBundle::default(),
@@ -45,4 +47,11 @@ fn startup(
         Collider::cuboid(10., 0.1, 10.),
         Transform::from_xyz(0., -0.1, 0.)
     ));
+
+    //test fluid
+    let black_goo = commands.spawn(
+        FluidParticlePositions {
+            positions: cube_particle_positions(10, 10, 10, salva_ctx.liquid_world.particle_radius())
+        }
+    ).id();
 }

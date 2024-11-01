@@ -1,7 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
 use bevy::{math::Vec3, prelude::Component};
-use salva3d::{math::{Point, Real}, object::FluidHandle};
+use salva3d::{math::{Point, Real}, object::FluidHandle, solver::NonPressureForce};
 
 #[derive(Component)]
 pub struct SalvaFluidHandle(pub FluidHandle);
@@ -21,3 +21,6 @@ impl Default for FluidDensity {
         Self { density0: 1000.0 }
     }
 }
+
+#[derive(Component)]
+pub struct FluidNonPressureForces(pub Vec<Box<dyn NonPressureForce>>);

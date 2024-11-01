@@ -1,8 +1,6 @@
 use bevy::math::Vec3;
 
-use crate::fluid::Fluid;
-
-pub fn cube_fluid(ni: usize, nj: usize, nk: usize, particle_rad: f32, density: f32) -> Fluid {
+pub fn cube_particle_positions(ni: usize, nj: usize, nk: usize, particle_rad: f32) -> Vec<Vec3> {
     let mut points = Vec::new();
     let half_extents = Vec3::new(ni as f32, nj as f32, nk as f32) * particle_rad;
 
@@ -17,5 +15,5 @@ pub fn cube_fluid(ni: usize, nj: usize, nk: usize, particle_rad: f32, density: f
         }
     }
 
-    Fluid::new(points, particle_rad, density)
+    points
 }
