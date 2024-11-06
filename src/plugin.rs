@@ -1,8 +1,10 @@
 use std::{mem, rc::Rc, sync::Arc};
 
-use bevy::{app::{Plugin, PostUpdate}, ecs::{intern::Interned, schedule::{ScheduleLabel, SystemConfigs}}, prelude::Resource};
+use bevy::{app::{Plugin, PostUpdate}, ecs::{intern::Interned, schedule::{ScheduleLabel, SystemConfigs}}, prelude::{IntoSystemConfigs, Resource}};
 use bevy_rapier3d::plugin::PhysicsSet;
 use salva3d::{math::Real, solver::{DFSPHSolver, PressureSolver}, LiquidWorld};
+
+use crate::systems;
 
 pub struct SalvaPhysicsPlugin<S: PressureSolver + Send + Sync + 'static> {
     schedule: Interned<dyn ScheduleLabel>,
@@ -52,19 +54,20 @@ impl<S: PressureSolver + Send + Sync + 'static> SalvaPhysicsPlugin<S> {
         self
     }
 
-    // pub fn get_systems(set: PhysicsSet) -> SystemConfigs {
-    //     match set {
-    //         PhysicsSet::SyncBackend => (
+    pub fn get_systems(set: PhysicsSet) -> SystemConfigs {
+        match set {
+            PhysicsSet::SyncBackend => (
+                systems::init_fluids,
+            ).chain().into_configs(),
+            _ => todo!()
+            // PhysicsSet::StepSimulation => (
 
-    //         ).chain().into_configs(),
-    //         PhysicsSet::StepSimulation => (
+            // ).chain().into_configs(),
+            // PhysicsSet::Writeback => (
 
-    //         ).chain().into_configs(),
-    //         PhysicsSet::Writeback => (
-
-    //         ).chain().into_configs()
-    //     }
-    // }
+            // ).chain().into_configs()
+        }
+    }
 }
 
 #[derive(Resource)]
@@ -84,6 +87,10 @@ impl<S: PressureSolver + Send + Sync + 'static> Plugin for SalvaPhysicsPlugin<S>
             });
 
             // TODO: add systems in system sets using self.get_systems()
+            app.add_systems(
+                self.schedule,
+                Self::get_systems(PhysicsSet::SyncBackend)
+            );
         }
     }
 }

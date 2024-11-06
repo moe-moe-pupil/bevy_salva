@@ -1,9 +1,9 @@
 use bevy::{app::{App, Startup}, prelude::{Bundle, Camera3dBundle, Commands, Res, Transform}, DefaultPlugins};
 use bevy_flycam::{FlyCam, NoCameraPlayerPlugin};
 use bevy_rapier3d::{plugin::{systems::init_colliders, RapierPhysicsPlugin}, prelude::{Collider, RigidBody}, render::RapierDebugRenderPlugin};
-use fluid::FluidParticlePositions;
+use fluid::{FluidNonPressureForces, FluidParticlePositions};
 use plugin::{SalvaContext, SalvaPhysicsPlugin};
-use salva3d::solver::DFSPHSolver;
+use salva3d::solver::{ArtificialViscosity, DFSPHSolver};
 use utils::cube_particle_positions;
 
 mod plugin;
@@ -49,9 +49,10 @@ fn startup(
     ));
 
     //test fluid
-    let black_goo = commands.spawn(
+    let black_goo = commands.spawn((
         FluidParticlePositions {
             positions: cube_particle_positions(10, 10, 10, salva_ctx.liquid_world.particle_radius())
-        }
-    ).id();
+        },
+        FluidNonPressureForces(vec![Box::new(ArtificialViscosity::new(2.0,0.0))])
+    )).id();
 }
