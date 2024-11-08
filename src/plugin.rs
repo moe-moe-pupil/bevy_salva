@@ -1,8 +1,8 @@
-use std::{mem, rc::Rc, sync::Arc};
+use std::{collections::HashMap, mem, rc::Rc, sync::Arc};
 
 use bevy::{app::{Plugin, PostUpdate}, ecs::{intern::Interned, schedule::{ScheduleLabel, SystemConfigs}, world::Command}, prelude::{Component, Entity, IntoSystemConfigs, Resource}};
 use bevy_rapier3d::plugin::PhysicsSet;
-use salva3d::{math::Real, solver::{DFSPHSolver, NonPressureForce, PressureSolver}, LiquidWorld};
+use salva3d::{math::Real, object::FluidHandle, solver::{DFSPHSolver, NonPressureForce, PressureSolver}, LiquidWorld};
 
 use crate::systems;
 
@@ -58,7 +58,8 @@ impl<S: PressureSolver + Send + Sync + 'static> SalvaPhysicsPlugin<S> {
         match set {
             PhysicsSet::SyncBackend => (
                 systems::init_fluids,
-                systems::apply_nonpressure_force_changes
+                systems::apply_nonpressure_force_changes,
+                systems::sync_removals
             ).chain().into_configs(),
             _ => todo!()
             // PhysicsSet::StepSimulation => (
@@ -73,7 +74,8 @@ impl<S: PressureSolver + Send + Sync + 'static> SalvaPhysicsPlugin<S> {
 
 #[derive(Resource)]
 pub struct SalvaContext {
-    pub liquid_world: LiquidWorld
+    pub liquid_world: LiquidWorld,
+    pub entity2fluid: HashMap<Entity, FluidHandle>
 }
 
 impl<S: PressureSolver + Send + Sync + 'static> Plugin for SalvaPhysicsPlugin<S> {
@@ -84,7 +86,8 @@ impl<S: PressureSolver + Send + Sync + 'static> Plugin for SalvaPhysicsPlugin<S>
 
         if self.default_rapier_coupling_config {
             app.insert_resource(SalvaContext {
-                liquid_world: LiquidWorld::new(solver, self.particle_radius, self.smoothing_factor)
+                liquid_world: LiquidWorld::new(solver, self.particle_radius, self.smoothing_factor),
+                entity2fluid: HashMap::default()
             });
 
             // TODO: add systems in system sets using self.get_systems()

@@ -1,4 +1,4 @@
-use bevy::prelude::{Changed, Commands, Entity, Query, ResMut, Without};
+use bevy::prelude::{Changed, Commands, Entity, Query, RemovedComponents, ResMut, Without};
 use salva3d::{math::Point, object::Fluid};
 
 use crate::{fluid::{FluidDensity, FluidNonPressureForces, FluidParticlePositions, SalvaFluidHandle}, plugin::{AppendNonPressureForces, RemoveNonPressureForcesAt, SalvaContext}};
@@ -27,6 +27,8 @@ pub fn init_fluids(
         
         let fluid_handle = salva_cxt.liquid_world.add_fluid(salva_fluid);
         entity_cmd.insert(SalvaFluidHandle(fluid_handle));
+
+        salva_cxt.entity2fluid.insert(entity, fluid_handle);
     }
 }
 
@@ -61,5 +63,17 @@ pub fn apply_nonpressure_force_changes(
             nonpressure_forces.remove(*i);
         }
         removals.0.clear();
+    }
+}
+
+pub fn sync_removals(
+    mut removed_particle_positions: RemovedComponents<FluidParticlePositions>,
+    mut removed_fluids: RemovedComponents<SalvaFluidHandle>,
+    mut salva_cxt: ResMut<SalvaContext>
+) {
+    //remove fluids whos entities had their salva fluid handle or fluid particle components removed
+    for entity in removed_fluids.read().chain(removed_particle_positions.read()) {
+        let handle = *salva_cxt.entity2fluid.get(&entity).unwrap();
+        salva_cxt.liquid_world.remove_fluid(handle);
     }
 }
