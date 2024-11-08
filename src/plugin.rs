@@ -1,8 +1,8 @@
 use std::{mem, rc::Rc, sync::Arc};
 
-use bevy::{app::{Plugin, PostUpdate}, ecs::{intern::Interned, schedule::{ScheduleLabel, SystemConfigs}}, prelude::{IntoSystemConfigs, Resource}};
+use bevy::{app::{Plugin, PostUpdate}, ecs::{intern::Interned, schedule::{ScheduleLabel, SystemConfigs}, world::Command}, prelude::{Component, Entity, IntoSystemConfigs, Resource}};
 use bevy_rapier3d::plugin::PhysicsSet;
-use salva3d::{math::Real, solver::{DFSPHSolver, PressureSolver}, LiquidWorld};
+use salva3d::{math::Real, solver::{DFSPHSolver, NonPressureForce, PressureSolver}, LiquidWorld};
 
 use crate::systems;
 
@@ -58,6 +58,7 @@ impl<S: PressureSolver + Send + Sync + 'static> SalvaPhysicsPlugin<S> {
         match set {
             PhysicsSet::SyncBackend => (
                 systems::init_fluids,
+                systems::apply_nonpressure_force_changes
             ).chain().into_configs(),
             _ => todo!()
             // PhysicsSet::StepSimulation => (
@@ -94,3 +95,9 @@ impl<S: PressureSolver + Send + Sync + 'static> Plugin for SalvaPhysicsPlugin<S>
         }
     }
 }
+
+#[derive(Component)]
+pub struct AppendNonPressureForces(pub Vec<Box<dyn NonPressureForce>>);
+
+#[derive(Component)]
+pub struct RemoveNonPressureForcesAt(pub Vec<usize>);

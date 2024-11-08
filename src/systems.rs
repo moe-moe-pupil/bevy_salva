@@ -1,7 +1,7 @@
-use bevy::prelude::{Commands, Entity, Query, ResMut, Without};
+use bevy::prelude::{Changed, Commands, Entity, Query, ResMut, Without};
 use salva3d::{math::Point, object::Fluid};
 
-use crate::{fluid::{FluidDensity, FluidNonPressureForces, FluidParticlePositions, SalvaFluidHandle}, plugin::SalvaContext};
+use crate::{fluid::{FluidDensity, FluidNonPressureForces, FluidParticlePositions, SalvaFluidHandle}, plugin::{AppendNonPressureForces, RemoveNonPressureForcesAt, SalvaContext}};
 
 pub fn init_fluids(
     mut commands: Commands,
@@ -27,5 +27,39 @@ pub fn init_fluids(
         
         let fluid_handle = salva_cxt.liquid_world.add_fluid(salva_fluid);
         entity_cmd.insert(SalvaFluidHandle(fluid_handle));
+    }
+}
+
+pub fn apply_nonpressure_force_changes(
+    mut append_q: Query<(
+        &SalvaFluidHandle,
+        &mut AppendNonPressureForces,
+    ), Changed<AppendNonPressureForces>>,
+    mut remove_at_q: Query<(
+        &SalvaFluidHandle,
+        &mut RemoveNonPressureForcesAt,
+    ), Changed<RemoveNonPressureForcesAt>>,
+    mut salva_cxt: ResMut<SalvaContext>
+) {
+    for (handle, mut appends) in append_q.iter_mut() {
+        salva_cxt.liquid_world
+            .fluids_mut()
+            .get_mut(handle.0)
+            .unwrap()
+            .nonpressure_forces
+            .append(&mut appends.0);
+    }
+
+    for (handle, mut removals) in remove_at_q.iter_mut() {
+        let nonpressure_forces = &mut salva_cxt.liquid_world
+            .fluids_mut()
+            .get_mut(handle.0)
+            .unwrap()
+            .nonpressure_forces;
+
+        for i in removals.0.iter() {
+            nonpressure_forces.remove(*i);
+        }
+        removals.0.clear();
     }
 }

@@ -1,6 +1,6 @@
 use std::ops::{Deref, DerefMut};
 
-use bevy::{math::Vec3, prelude::Component};
+use bevy::{ecs::world::Command, math::Vec3, prelude::{Component, Entity, Resource}};
 use salva3d::{math::{Point, Real}, object::FluidHandle, solver::NonPressureForce};
 
 #[derive(Component)]
