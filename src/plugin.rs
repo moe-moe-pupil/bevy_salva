@@ -1,8 +1,20 @@
-use std::{collections::HashMap, mem, rc::Rc, sync::Arc};
+use std::collections::HashMap;
 
-use bevy::{app::{Plugin, PostUpdate}, ecs::{intern::Interned, schedule::{ScheduleLabel, SystemConfigs}, world::Command}, prelude::{Component, Entity, IntoSystemConfigs, Resource}};
+use bevy::{
+    app::{Plugin, PostUpdate},
+    ecs::{
+        intern::Interned,
+        schedule::{ScheduleLabel, SystemConfigs},
+    },
+    prelude::{Component, Entity, IntoSystemConfigs, Resource},
+};
 use bevy_rapier3d::plugin::PhysicsSet;
-use salva3d::{math::Real, object::FluidHandle, solver::{DFSPHSolver, NonPressureForce, PressureSolver}, LiquidWorld};
+use salva3d::{
+    math::Real,
+    object::FluidHandle,
+    solver::{NonPressureForce, PressureSolver},
+    LiquidWorld,
+};
 
 use crate::systems;
 
@@ -15,7 +27,6 @@ pub struct SalvaPhysicsPlugin<S: PressureSolver + Send + Sync + 'static> {
 }
 
 impl<S: PressureSolver + Send + Sync + 'static> SalvaPhysicsPlugin<S> {
-
     pub const DEFAULT_PARTICLE_RADIUS: Real = 0.05;
     pub const DEFAULT_SMOOTHING_FACTOR: Real = 2.0;
 
@@ -59,15 +70,16 @@ impl<S: PressureSolver + Send + Sync + 'static> SalvaPhysicsPlugin<S> {
             PhysicsSet::SyncBackend => (
                 systems::init_fluids,
                 systems::apply_nonpressure_force_changes,
-                systems::sync_removals
-            ).chain().into_configs(),
-            _ => todo!()
-            // PhysicsSet::StepSimulation => (
+                systems::sync_removals,
+            )
+                .chain()
+                .into_configs(),
+            _ => todo!(), // PhysicsSet::StepSimulation => (
 
-            // ).chain().into_configs(),
-            // PhysicsSet::Writeback => (
+                          // ).chain().into_configs(),
+                          // PhysicsSet::Writeback => (
 
-            // ).chain().into_configs()
+                          // ).chain().into_configs()
         }
     }
 }
@@ -75,26 +87,22 @@ impl<S: PressureSolver + Send + Sync + 'static> SalvaPhysicsPlugin<S> {
 #[derive(Resource)]
 pub struct SalvaContext {
     pub liquid_world: LiquidWorld,
-    pub entity2fluid: HashMap<Entity, FluidHandle>
+    pub entity2fluid: HashMap<Entity, FluidHandle>,
 }
 
 impl<S: PressureSolver + Send + Sync + 'static> Plugin for SalvaPhysicsPlugin<S> {
     fn build(&self, app: &mut bevy::prelude::App) {
-        // SAFETY: this is fine because self.solver is private, meaning that 
+        // SAFETY: this is fine because self.solver is private, meaning that
         //         self.solver cannot be accessed after the app closes
-        let solver: S = unsafe { std::mem::transmute_copy(&self.solver)};
+        let solver: S = unsafe { std::mem::transmute_copy(&self.solver) };
 
         if self.default_rapier_coupling_config {
             app.insert_resource(SalvaContext {
                 liquid_world: LiquidWorld::new(solver, self.particle_radius, self.smoothing_factor),
-                entity2fluid: HashMap::default()
+                entity2fluid: HashMap::default(),
             });
 
-            // TODO: add systems in system sets using self.get_systems()
-            app.add_systems(
-                self.schedule,
-                Self::get_systems(PhysicsSet::SyncBackend)
-            );
+            app.add_systems(self.schedule, Self::get_systems(PhysicsSet::SyncBackend));
         }
     }
 }
