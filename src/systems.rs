@@ -1,6 +1,6 @@
-use bevy::prelude::{Changed, Commands, Entity, Query, RemovedComponents, ResMut, Without};
+use bevy::prelude::{Changed, Commands, Entity, Query, RemovedComponents, Res, ResMut, Time, Without};
 use salva3d::{math::Point, object::Fluid};
-
+use salva3d::math::Vector;
 use crate::{
     fluid::{FluidDensity, FluidNonPressureForces, FluidParticlePositions, SalvaFluidHandle},
     plugin::{AppendNonPressureForces, RemoveNonPressureForcesAt, SalvaContext},
@@ -95,4 +95,13 @@ pub fn sync_removals(
         let handle = *salva_cxt.entity2fluid.get(&entity).unwrap();
         salva_cxt.liquid_world.remove_fluid(handle);
     }
+}
+
+//for now, just assume that everything is run in bevy's fixed step
+pub fn step_simulation(
+    mut salva_ctx: ResMut<SalvaContext>,
+    time: Res<Time>
+) {
+    println!("test");
+    salva_ctx.liquid_world.step(time.delta_secs(), &Vector::new(0., -9.81, 0.));
 }

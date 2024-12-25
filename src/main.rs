@@ -5,13 +5,16 @@ use bevy::{
     time::{Fixed, Time},
     DefaultPlugins,
 };
+use bevy::prelude::FixedUpdate;
 use bevy_flycam::{FlyCam, NoCameraPlayerPlugin};
 use bevy_rapier3d::{
     na::Vector3,
-    plugin::{RapierConfiguration, RapierPhysicsPlugin},
+    plugin::RapierPhysicsPlugin,
     prelude::{Collider, RigidBody},
     render::RapierDebugRenderPlugin,
 };
+use bevy_rapier3d::plugin::DefaultRapierContext;
+use bevy_rapier3d::prelude::{RapierConfiguration, ReadDefaultRapierContext};
 use fluid::{FluidParticlePositions, SalvaFluidHandle};
 use plugin::{
     AppendNonPressureForces, RemoveNonPressureForcesAt, SalvaContext, SalvaPhysicsPlugin,
@@ -35,7 +38,8 @@ fn main() {
         DefaultPlugins,
         RapierPhysicsPlugin::<()>::default(),
         RapierDebugRenderPlugin::default(),
-        SalvaPhysicsPlugin::new(fluid_solver),
+        SalvaPhysicsPlugin::new(fluid_solver)
+            .in_schedule(FixedUpdate),
         NoCameraPlayerPlugin,
     ));
 
@@ -86,9 +90,9 @@ pub fn update(
 
 pub fn fixed_update(
     mut salva_ctx: ResMut<SalvaContext>,
-    rapier_config: Res<RapierConfiguration>,
+    rapier_config: Query<&RapierConfiguration, With<DefaultRapierContext>>,
     time: Res<Time>,
 ) {
-    let gravity = Vector3::from(rapier_config.gravity);
-    salva_ctx.liquid_world.step(time.delta_seconds(), &gravity);
+    let gravity = Vector3::from(rapier_config.get_single().unwrap().gravity);
+    salva_ctx.liquid_world.step(time.delta_secs(), &gravity);
 }

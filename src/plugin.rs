@@ -8,6 +8,7 @@ use bevy::{
     },
     prelude::{Component, Entity, IntoSystemConfigs, Resource},
 };
+use bevy::prelude::{IntoSystemSetConfigs, SystemSet, TransformSystem};
 use bevy_rapier3d::plugin::PhysicsSet;
 use salva3d::{
     math::Real,
@@ -18,6 +19,7 @@ use salva3d::{
 
 use crate::systems;
 
+//TODO: use a feature for enabling coupling with bevy_rapier
 pub struct SalvaPhysicsPlugin<S: PressureSolver + Send + Sync + 'static> {
     schedule: Interned<dyn ScheduleLabel>,
     default_rapier_coupling_config: bool,
@@ -65,21 +67,23 @@ impl<S: PressureSolver + Send + Sync + 'static> SalvaPhysicsPlugin<S> {
         self
     }
 
-    pub fn get_systems(set: PhysicsSet) -> SystemConfigs {
+    pub fn get_systems(set: SalvaSimulationSet) -> SystemConfigs {
         match set {
-            PhysicsSet::SyncBackend => (
+            SalvaSimulationSet::SyncBackend => (
                 systems::init_fluids,
                 systems::apply_nonpressure_force_changes,
                 systems::sync_removals,
             )
                 .chain()
-                .into_configs(),
-            _ => todo!(), // PhysicsSet::StepSimulation => (
-
-                          // ).chain().into_configs(),
-                          // PhysicsSet::Writeback => (
-
-                          // ).chain().into_configs()
+                .in_set(SalvaSimulationSet::SyncBackend),
+            SalvaSimulationSet::StepSimulation => (systems::step_simulation)
+                .in_set(SalvaSimulationSet::StepSimulation),
+            // SalvaSimulationSet::Writeback => (
+            //
+            // )
+            //     .chain()
+            //     .in_set(SalvaSimulationSet::Writeback),
+            _ => todo!(),
         }
     }
 }
@@ -90,19 +94,47 @@ pub struct SalvaContext {
     pub entity2fluid: HashMap<Entity, FluidHandle>,
 }
 
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub enum SalvaSimulationSet {
+    SyncBackend,
+    StepSimulation,
+    Writeback,
+}
+
 impl<S: PressureSolver + Send + Sync + 'static> Plugin for SalvaPhysicsPlugin<S> {
     fn build(&self, app: &mut bevy::prelude::App) {
         // SAFETY: this is fine because self.solver is private, meaning that
         //         self.solver cannot be accessed after the app closes
         let solver: S = unsafe { std::mem::transmute_copy(&self.solver) };
 
-        if self.default_rapier_coupling_config {
-            app.insert_resource(SalvaContext {
-                liquid_world: LiquidWorld::new(solver, self.particle_radius, self.smoothing_factor),
-                entity2fluid: HashMap::default(),
-            });
+        app.insert_resource(SalvaContext {
+            liquid_world: LiquidWorld::new(solver, self.particle_radius, self.smoothing_factor),
+            entity2fluid: HashMap::default(),
+        });
 
-            app.add_systems(self.schedule, Self::get_systems(PhysicsSet::SyncBackend));
+        if self.default_rapier_coupling_config {
+            app.configure_sets(
+                self.schedule,
+                (
+                    SalvaSimulationSet::SyncBackend,
+                    SalvaSimulationSet::StepSimulation,
+                    SalvaSimulationSet::Writeback,
+                )
+                    .chain()
+                    .before(TransformSystem::TransformPropagate)
+                    .after(PhysicsSet::Writeback)
+            );
+
+            app.add_systems(
+                self.schedule,
+                (
+                    Self::get_systems(SalvaSimulationSet::SyncBackend),
+                    Self::get_systems(SalvaSimulationSet::StepSimulation),
+                    // Self::get_systems(SalvaSimulationSet::Writeback),
+                )
+            );
+
+            //TODO: implement a TimestepMode like how bevy_rapier has it
         }
     }
 }
