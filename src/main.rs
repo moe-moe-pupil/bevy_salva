@@ -5,7 +5,7 @@ use bevy::{
     time::{Fixed, Time},
     DefaultPlugins,
 };
-use bevy::prelude::FixedUpdate;
+use bevy::prelude::{Camera3d, FixedUpdate, Update};
 use bevy_flycam::{FlyCam, NoCameraPlayerPlugin};
 use bevy_rapier3d::{
     na::Vector3,
@@ -46,13 +46,15 @@ fn main() {
     ));
 
 
-    app.add_systems(Startup, startup);
+    app
+        .add_systems(Startup, startup)
+        .add_systems(Update, update);
 
     app.run();
 }
 
 fn startup(mut commands: Commands, salva_ctx: Res<SalvaContext>) {
-    commands.spawn((Camera3dBundle::default(), FlyCam));
+    commands.spawn((Camera3d::default(), FlyCam));
 
     commands.spawn((
         RigidBody::Fixed,
@@ -78,12 +80,16 @@ fn startup(mut commands: Commands, salva_ctx: Res<SalvaContext>) {
 
 pub fn update(
     mut commands: Commands,
-    fluid_q: Query<Entity, With<SalvaFluidHandle>>,
+    fluid_q: Query<(Entity, &FluidParticlePositions), With<SalvaFluidHandle>>,
     keys: Res<ButtonInput<KeyCode>>,
 ) {
+    let result = fluid_q.get_single();
+    if result.is_err() { return; }
+    let (fluid_entity, positions) = result.unwrap();
+    println!("{}", positions.positions[0]);
     if keys.just_pressed(KeyCode::KeyG) {
         commands
-            .get_entity(fluid_q.get_single().unwrap())
+            .get_entity(fluid_entity)
             .unwrap()
             .insert(RemoveNonPressureForcesAt(vec![0]));
     }

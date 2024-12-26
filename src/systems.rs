@@ -1,5 +1,5 @@
 use std::time::Instant;
-use bevy::prelude::{Changed, Commands, Entity, Query, RemovedComponents, Res, ResMut, Time, Without};
+use bevy::prelude::{Changed, Commands, Entity, Query, RemovedComponents, Res, ResMut, Time, Vec3, Without};
 use salva3d::{math::Point, object::Fluid};
 use salva3d::math::Vector;
 use crate::{
@@ -104,4 +104,18 @@ pub fn step_simulation(
     time: Res<Time>
 ) {
     salva_ctx.liquid_world.step(time.delta_secs(), &Vector::new(0., -9.81, 0.));
+}
+
+pub fn writeback_particle_positions(
+    salva_ctx: Res<SalvaContext>,
+    mut fluid_pos_q: Query<(&SalvaFluidHandle, &mut FluidParticlePositions)>
+) {
+    let fluids = salva_ctx.liquid_world.fluids();
+    for (handle, mut particle_positions) in fluid_pos_q.iter_mut() {
+        let positions = &fluids.get(handle.0).unwrap().positions;
+        particle_positions.positions = positions
+            .iter()
+            .map(|v| Vec3::new(v.x, v.y, v.z))
+            .collect();
+    }
 }

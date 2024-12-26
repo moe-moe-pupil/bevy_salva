@@ -78,11 +78,11 @@ impl<S: PressureSolver + Send + Sync + 'static> SalvaPhysicsPlugin<S> {
                 .in_set(SalvaSimulationSet::SyncBackend),
             SalvaSimulationSet::StepSimulation => (systems::step_simulation)
                 .in_set(SalvaSimulationSet::StepSimulation),
-            // SalvaSimulationSet::Writeback => (
-            //
-            // )
-            //     .chain()
-            //     .in_set(SalvaSimulationSet::Writeback),
+            SalvaSimulationSet::Writeback => (
+                systems::writeback_particle_positions,
+            )
+                .chain()
+                .in_set(SalvaSimulationSet::Writeback),
             _ => todo!(),
         }
     }
@@ -130,7 +130,7 @@ impl<S: PressureSolver + Send + Sync + 'static> Plugin for SalvaPhysicsPlugin<S>
                 (
                     Self::get_systems(SalvaSimulationSet::SyncBackend),
                     Self::get_systems(SalvaSimulationSet::StepSimulation),
-                    // Self::get_systems(SalvaSimulationSet::Writeback),
+                    Self::get_systems(SalvaSimulationSet::Writeback),
                 )
             );
 
