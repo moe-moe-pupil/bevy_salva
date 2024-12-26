@@ -1,3 +1,4 @@
+use std::time::Instant;
 use bevy::prelude::{Changed, Commands, Entity, Query, RemovedComponents, Res, ResMut, Time, Without};
 use salva3d::{math::Point, object::Fluid};
 use salva3d::math::Vector;
@@ -97,11 +98,10 @@ pub fn sync_removals(
     }
 }
 
-//for now, just assume that everything is run in bevy's fixed step
+//for now, just assume that everything is run in bevy's post update step
 pub fn step_simulation(
     mut salva_ctx: ResMut<SalvaContext>,
     time: Res<Time>
 ) {
-    println!("test");
     salva_ctx.liquid_world.step(time.delta_secs(), &Vector::new(0., -9.81, 0.));
 }

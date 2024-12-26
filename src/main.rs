@@ -33,6 +33,8 @@ pub const DEFAULT_SMOOTHING_FACTOR: salva3d::math::Real = 2.0;
 fn main() {
     let mut app = App::new();
 
+    app.insert_resource(Time::<Fixed>::from_hz(60.));
+
     let fluid_solver: DFSPHSolver = DFSPHSolver::new();
     app.add_plugins((
         DefaultPlugins,
@@ -43,7 +45,6 @@ fn main() {
         NoCameraPlayerPlugin,
     ));
 
-    app.insert_resource(Time::<Fixed>::from_hz(60.));
 
     app.add_systems(Startup, startup);
 
