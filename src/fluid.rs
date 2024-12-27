@@ -1,13 +1,5 @@
-
-use bevy::{
-    math::Vec3,
-    prelude::Component,
-};
-use salva3d::{
-    math::Real,
-    object::FluidHandle,
-    solver::NonPressureForce,
-};
+use bevy::{math::Vec3, prelude::Component};
+use salva3d::{math::Real, object::FluidHandle, solver::NonPressureForce};
 
 #[derive(Component)]
 pub struct SalvaFluidHandle(pub FluidHandle);

@@ -1,3 +1,6 @@
+use crate::rapier_integration::{ColliderSamplingMethod, RapierColliderSampling};
+use bevy::math::vec3;
+use bevy::prelude::{Camera3d, Color, FixedUpdate, Gizmos, Isometry3d, Update, Vec3};
 use bevy::{
     app::{App, Startup},
     input::ButtonInput,
@@ -5,30 +8,27 @@ use bevy::{
     time::{Fixed, Time},
     DefaultPlugins,
 };
-use bevy::math::vec3;
-use bevy::prelude::{Camera3d, Color, FixedUpdate, Gizmos, Isometry3d, Update, Vec3};
 use bevy_flycam::{FlyCam, NoCameraPlayerPlugin};
+use bevy_rapier3d::plugin::DefaultRapierContext;
+use bevy_rapier3d::prelude::{RapierConfiguration, ReadDefaultRapierContext};
 use bevy_rapier3d::{
     na::Vector3,
     plugin::RapierPhysicsPlugin,
     prelude::{Collider, RigidBody},
     render::RapierDebugRenderPlugin,
 };
-use bevy_rapier3d::plugin::DefaultRapierContext;
-use bevy_rapier3d::prelude::{RapierConfiguration, ReadDefaultRapierContext};
 use fluid::{FluidParticlePositions, SalvaFluidHandle};
 use plugin::{
     AppendNonPressureForces, RemoveNonPressureForcesAt, SalvaContext, SalvaPhysicsPlugin,
 };
 use salva3d::solver::{ArtificialViscosity, DFSPHSolver};
 use utils::cube_particle_positions;
-use crate::rapier_integration::RapierColliderSampling;
 
 mod fluid;
 mod plugin;
+mod rapier_integration;
 mod systems;
 mod utils;
-mod rapier_integration;
 
 pub const DEFAULT_PARTICLE_RADIUS: salva3d::math::Real = 0.05;
 pub const DEFAULT_SMOOTHING_FACTOR: salva3d::math::Real = 2.0;
@@ -43,14 +43,11 @@ fn main() {
         DefaultPlugins,
         RapierPhysicsPlugin::<()>::default(),
         RapierDebugRenderPlugin::default(),
-        SalvaPhysicsPlugin::new(fluid_solver)
-            .in_schedule(FixedUpdate),
+        SalvaPhysicsPlugin::new(fluid_solver).in_schedule(FixedUpdate),
         NoCameraPlayerPlugin,
     ));
 
-
-    app
-        .add_systems(Startup, startup)
+    app.add_systems(Startup, startup)
         .add_systems(Update, update);
 
     app.run();
@@ -59,8 +56,7 @@ fn main() {
 fn startup(mut commands: Commands, salva_context: Res<SalvaContext>) {
     commands.spawn((
         Camera3d::default(),
-        Transform::from_xyz(5., 5., 5.)
-            .looking_at(Vec3::new(0., 0., 0.), Vec3::Y),
+        Transform::from_xyz(5., 5., 5.).looking_at(Vec3::new(0., 0., 0.), Vec3::Y),
         FlyCam,
     ));
 
@@ -68,24 +64,16 @@ fn startup(mut commands: Commands, salva_context: Res<SalvaContext>) {
         RigidBody::Fixed,
         Collider::cuboid(10., 0.1, 10.),
         Transform::from_xyz(0., -0.1, 0.),
-        RapierColliderSampling::default()
+        RapierColliderSampling::default(),
     ));
 
     //test fluid
-    let mut positions = cube_particle_positions(
-        10,
-        10,
-        10,
-        salva_context.liquid_world.particle_radius(),
-    );
-    positions
-        .iter_mut()
-        .for_each(|p| *p += vec3(0., 5., 0.));
+    let mut positions =
+        cube_particle_positions(10, 10, 10, salva_context.liquid_world.particle_radius());
+    positions.iter_mut().for_each(|p| *p += vec3(0., 5., 0.));
     let fluid = commands
         .spawn((
-            FluidParticlePositions {
-                positions,
-            },
+            FluidParticlePositions { positions },
             AppendNonPressureForces(vec![Box::new(ArtificialViscosity::new(2.0, 0.0))]),
         ))
         .id();
@@ -96,10 +84,12 @@ pub fn update(
     fluid_q: Query<(Entity, &FluidParticlePositions), With<SalvaFluidHandle>>,
     salva_context: Res<SalvaContext>,
     keys: Res<ButtonInput<KeyCode>>,
-    mut gizmos: Gizmos
+    mut gizmos: Gizmos,
 ) {
     let result = fluid_q.get_single();
-    if result.is_err() { return; }
+    if result.is_err() {
+        return;
+    }
     let (fluid_entity, positions) = result.unwrap();
 
     //draw particles
@@ -107,7 +97,7 @@ pub fn update(
         gizmos.sphere(
             Isometry3d::from_xyz(pos.x, pos.y, pos.z),
             salva_context.liquid_world.particle_radius(),
-            Color::linear_rgb(1., 0., 0.)
+            Color::linear_rgb(1., 0., 0.),
         );
     }
 
