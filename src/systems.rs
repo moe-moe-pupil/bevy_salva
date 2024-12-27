@@ -1,4 +1,4 @@
-use crate::rapier_integration::{ColliderBoundaryHandle, SampleRapierCollider};
+use crate::rapier_integration::{ColliderBoundaryHandle, ColliderSamplingMethod, RapierColliderSampling};
 use crate::{
     fluid::{FluidDensity, FluidNonPressureForces, FluidParticlePositions, SalvaFluidHandle},
     plugin::{AppendNonPressureForces, RemoveNonPressureForcesAt, SalvaContext},
@@ -134,22 +134,27 @@ pub fn writeback_particle_positions(
 
 pub fn sample_rapier_colliders(
     mut commands: Commands,
-    colliders: Query<(Entity, &RapierColliderHandle), (With<SampleRapierCollider>, Without<ColliderBoundaryHandle>)>,
+    colliders: Query<(Entity, &RapierColliderHandle, &RapierColliderSampling), Without<ColliderBoundaryHandle>>,
     mut salva_context: ResMut<SalvaContext>,
     rapier_context: ReadDefaultRapierContext
 ) {
     let radius = salva_context.liquid_world.particle_radius();
-    for (entity, co_handle) in colliders.iter() {
+    for (entity, co_handle, sampling) in colliders.iter() {
         let co = rapier_context.colliders.get(co_handle.0).unwrap();
-        let samples =
-            salva3d::sampling::shape_surface_ray_sample(&*co.shape(), radius).unwrap();
         let bo_handle = salva_context
             .liquid_world
             .add_boundary(Boundary::new(Vec::new(), InteractionGroups::default()));
         salva_context.coupling.register_coupling(
             bo_handle,
             co_handle.0,
-            ColliderSampling::StaticSampling(samples),
+            match sampling.sampling_method {
+                ColliderSamplingMethod::StaticSampling => {
+                    let samples =
+                        salva3d::sampling::shape_surface_ray_sample(co.shape(), radius).unwrap();
+                    ColliderSampling::StaticSampling(samples)
+                },
+                ColliderSamplingMethod::DynamicContactSampling => ColliderSampling::DynamicContactSampling
+            },
         );
 
         commands.get_entity(entity).unwrap()

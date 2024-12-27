@@ -22,7 +22,7 @@ use plugin::{
 };
 use salva3d::solver::{ArtificialViscosity, DFSPHSolver};
 use utils::cube_particle_positions;
-use crate::rapier_integration::SampleRapierCollider;
+use crate::rapier_integration::RapierColliderSampling;
 
 mod fluid;
 mod plugin;
@@ -68,7 +68,7 @@ fn startup(mut commands: Commands, salva_context: Res<SalvaContext>) {
         RigidBody::Fixed,
         Collider::cuboid(10., 0.1, 10.),
         Transform::from_xyz(0., -0.1, 0.),
-        SampleRapierCollider
+        RapierColliderSampling::default()
     ));
 
     //test fluid
