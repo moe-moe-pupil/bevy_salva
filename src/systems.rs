@@ -151,14 +151,17 @@ pub fn sample_rapier_colliders(
         salva_context.coupling.register_coupling(
             bo_handle,
             co_handle.0,
-            match sampling.sampling_method {
-                ColliderSamplingMethod::StaticSampling => {
+            match &sampling.sampling_method {
+                ColliderSamplingMethod::Static => {
                     let samples =
                         salva3d::sampling::shape_surface_ray_sample(co.shape(), radius).unwrap();
                     ColliderSampling::StaticSampling(samples)
                 }
-                ColliderSamplingMethod::DynamicContactSampling => {
+                ColliderSamplingMethod::DynamicContact => {
                     ColliderSampling::DynamicContactSampling
+                }
+                ColliderSamplingMethod::CustomStatic(samples) => {
+                    ColliderSampling::StaticSampling(samples.clone())
                 }
             },
         );
