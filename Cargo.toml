@@ -7,13 +7,15 @@ edition = "2021"
 bevy = "0.15.0"
 bevy_flycam = "0.15.0"
 bevy_rapier3d = "0.28.0"
-salva3d = { version = "0.9.0", features = ["sampling"] }
+
+[dependencies.salva3d]
+git = "https://github.com/nsjvidana/salva.git"
+rev = "5e5e09f"
+features = ["sampling"]
+version = "0.9.0"
 
 [profile.dev.package."*"]
 opt-level = 3
 
 [profile.dev]
 opt-level = 1
-
-[patch.crates-io]
-salva3d = { git = "https://github.com/nsjvidana/salva.git", branch = "bevy_rapier_coupling" }

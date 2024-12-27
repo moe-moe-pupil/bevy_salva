@@ -9,14 +9,18 @@ use bevy::{
     prelude::{Component, Entity, IntoSystemConfigs, Resource},
 };
 use bevy::prelude::{IntoSystemSetConfigs, SystemSet, TransformSystem};
+use bevy_rapier3d::parry::math::Vector;
 use bevy_rapier3d::plugin::PhysicsSet;
+use bevy_rapier3d::prelude::RapierContext;
+use bevy_rapier3d::rapier::dynamics::RigidBodySet;
+use bevy_rapier3d::rapier::geometry::ColliderSet;
 use salva3d::{
     math::Real,
     object::FluidHandle,
     solver::{NonPressureForce, PressureSolver},
     LiquidWorld,
 };
-
+use salva3d::integrations::rapier::ColliderCouplingSet;
 use crate::systems;
 
 //TODO: use a feature for enabling coupling with bevy_rapier
@@ -70,9 +74,10 @@ impl<S: PressureSolver + Send + Sync + 'static> SalvaPhysicsPlugin<S> {
     pub fn get_systems(set: SalvaSimulationSet) -> SystemConfigs {
         match set {
             SalvaSimulationSet::SyncBackend => (
+                systems::sync_removals,
                 systems::init_fluids,
                 systems::apply_nonpressure_force_changes,
-                systems::sync_removals,
+                systems::sample_rapier_colliders,
             )
                 .chain()
                 .in_set(SalvaSimulationSet::SyncBackend),
@@ -91,7 +96,23 @@ impl<S: PressureSolver + Send + Sync + 'static> SalvaPhysicsPlugin<S> {
 #[derive(Resource)]
 pub struct SalvaContext {
     pub liquid_world: LiquidWorld,
+    pub coupling: ColliderCouplingSet,
     pub entity2fluid: HashMap<Entity, FluidHandle>,
+}
+
+impl SalvaContext {
+    pub fn step(
+        &mut self,
+        dt: f32,
+        gravity: &Vector<f32>,
+        rapier_context: &mut RapierContext
+    ) {
+        self.liquid_world.step_with_coupling(
+            dt,
+            gravity,
+            &mut self.coupling.as_manager_mut(&rapier_context.colliders, &mut rapier_context.bodies),
+        );
+    }
 }
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -110,7 +131,15 @@ impl<S: PressureSolver + Send + Sync + 'static> Plugin for SalvaPhysicsPlugin<S>
         app.insert_resource(SalvaContext {
             liquid_world: LiquidWorld::new(solver, self.particle_radius, self.smoothing_factor),
             entity2fluid: HashMap::default(),
+            coupling: ColliderCouplingSet::new(),
         });
+
+        if self.schedule != PostUpdate.intern() {
+            app.add_systems(
+                PostUpdate,
+                (systems::sync_removals,).before(TransformSystem::TransformPropagate),
+            );
+        }
 
         if self.default_rapier_coupling_config {
             app.configure_sets(
