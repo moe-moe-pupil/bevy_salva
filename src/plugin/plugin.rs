@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::systems;
+use crate::plugin::systems;
 use bevy::prelude::{IntoSystemSetConfigs, SystemSet, TransformSystem};
 use bevy::{
     app::{Plugin, PostUpdate},
@@ -10,18 +10,16 @@ use bevy::{
     },
     prelude::{Component, Entity, IntoSystemConfigs, Resource},
 };
-use bevy_rapier3d::parry::math::Vector;
-use bevy_rapier3d::plugin::PhysicsSet;
-use bevy_rapier3d::prelude::RapierContext;
-use bevy_rapier3d::rapier::dynamics::RigidBodySet;
-use bevy_rapier3d::rapier::geometry::ColliderSet;
-use salva3d::integrations::rapier::ColliderCouplingSet;
-use salva3d::{
-    math::Real,
+use bevy_rapier::parry::math::Vector;
+use bevy_rapier::plugin::PhysicsSet;
+use bevy_rapier::prelude::RapierContext;
+use salva::integrations::rapier::ColliderCouplingSet;
+use salva::{
     object::FluidHandle,
     solver::{NonPressureForce, PressureSolver},
     LiquidWorld,
 };
+use crate::math::Real;
 
 //TODO: use a feature for enabling coupling with bevy_rapier
 pub struct SalvaPhysicsPlugin<S: PressureSolver + Send + Sync + 'static> {
@@ -87,7 +85,6 @@ impl<S: PressureSolver + Send + Sync + 'static> SalvaPhysicsPlugin<S> {
             SalvaSimulationSet::Writeback => (systems::writeback_particle_positions,)
                 .chain()
                 .in_set(SalvaSimulationSet::Writeback),
-            _ => todo!(),
         }
     }
 }

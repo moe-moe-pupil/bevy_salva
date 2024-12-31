@@ -1,12 +1,13 @@
-use bevy::{math::Vec3, prelude::Component};
-use salva3d::{math::Real, object::FluidHandle, solver::NonPressureForce};
+use bevy::{prelude::Component};
+use salva::{object::FluidHandle, solver::NonPressureForce};
+use crate::math::{Real, Vect};
 
 #[derive(Component)]
 pub struct SalvaFluidHandle(pub FluidHandle);
 
 #[derive(Component)]
 pub struct FluidParticlePositions {
-    pub positions: Vec<Vec3>,
+    pub positions: Vec<Vect>,
 }
 
 /// The rest density of a fluid (default 1000.0)

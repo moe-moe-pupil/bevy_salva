@@ -1,6 +1,6 @@
 use bevy::prelude::Component;
-use bevy_rapier3d::parry::math::Point;
-use salva3d::object::BoundaryHandle;
+use bevy_rapier::parry::math::Point;
+use salva::object::BoundaryHandle;
 
 #[allow(unused_imports)]
 use crate::plugin::SalvaPhysicsPlugin;
