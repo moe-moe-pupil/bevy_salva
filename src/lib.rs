@@ -9,7 +9,8 @@ pub extern crate bevy_rapier2d as bevy_rapier;
 #[cfg(all(feature = "dim3", feature = "rapier"))]
 pub extern crate bevy_rapier3d as bevy_rapier;
 
-/// Math type aliases based on the dimension the engine is using
+/// Math type aliases that select the right vector/rotation types based
+/// on the dimension used by Salva.
 #[cfg(feature = "dim2")]
 pub mod math {
     use bevy::math::Vec2;
@@ -21,8 +22,8 @@ pub mod math {
     pub type Rot = Real;
 }
 
-/// Type aliases to select the right vector/rotation types based
-/// on the dimension used by the engine.
+/// Math type aliases that select the right vector/rotation types based
+/// on the dimension used by Salva.
 #[cfg(feature = "dim3")]
 pub mod math {
     use bevy::math::{Quat, Vec3};
