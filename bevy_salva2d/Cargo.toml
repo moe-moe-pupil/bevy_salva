@@ -13,8 +13,7 @@ edition = "2021"
 [features]
 default = ["dim2"]
 dim2 = []
-rapier = ["bevy_rapier2d", "salva2d/rapier"]
-sampling = ["rapier", "salva2d/sampling"]
+rapier = ["bevy_rapier2d", "salva2d/rapier", "salva2d/sampling"]
 
 [lib]
 path = "../src/lib.rs"
