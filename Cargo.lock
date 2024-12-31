@@ -893,6 +893,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2af9e30b40fb3f0a80a658419f670f2de1e743efcaca1952c43cdcc923287944"
 
 [[package]]
+name = "bevy_rapier2d"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d396580d5437b6c6d03b1052ab934d43b6b3bea9bbe738560471bda2eb20717"
+dependencies = [
+ "bevy",
+ "bitflags 2.6.0",
+ "log",
+ "nalgebra",
+ "rapier2d",
+]
+
+[[package]]
 name = "bevy_rapier3d"
 version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1000,13 +1013,33 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_salva"
+name = "bevy_salva2d"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_rapier2d",
+ "nalgebra",
+ "salva2d",
+]
+
+[[package]]
+name = "bevy_salva3d"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_rapier3d",
+ "nalgebra",
+ "salva3d",
+]
+
+[[package]]
+name = "bevy_salva_testing"
 version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_flycam",
  "bevy_rapier3d",
- "salva3d",
+ "bevy_salva3d",
 ]
 
 [[package]]
@@ -3283,6 +3316,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "parry2d"
+version = "0.17.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "33b400b1955abdcf0a1de73d9379f8e73a2837970a4abc71194e4b2e56cccb0d"
+dependencies = [
+ "approx",
+ "arrayvec",
+ "bitflags 2.6.0",
+ "downcast-rs",
+ "either",
+ "ena",
+ "log",
+ "nalgebra",
+ "num-derive",
+ "num-traits",
+ "ordered-float",
+ "rustc-hash 2.0.0",
+ "simba",
+ "slab",
+ "smallvec",
+ "spade",
+ "thiserror",
+]
+
+[[package]]
 name = "parry3d"
 version = "0.17.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3527,6 +3585,29 @@ name = "rangemap"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f60fcc7d6849342eff22c4350c8b9a989ee8ceabc4b481253e8946b9fe83d684"
+
+[[package]]
+name = "rapier2d"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "643116992c25c96a07e1aae7d59fba207f01979dc9a107c42bcd4c4b83ef78b2"
+dependencies = [
+ "approx",
+ "arrayvec",
+ "bit-vec 0.7.0",
+ "bitflags 2.6.0",
+ "crossbeam",
+ "downcast-rs",
+ "log",
+ "nalgebra",
+ "num-derive",
+ "num-traits",
+ "ordered-float",
+ "parry2d",
+ "rustc-hash 2.0.0",
+ "simba",
+ "thiserror",
+]
 
 [[package]]
 name = "rapier3d"
@@ -3777,6 +3858,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3460605018fdc9612bce72735cba0d27efbcd9904780d44c7e3a9948f96148a"
 dependencies = [
  "bytemuck",
+]
+
+[[package]]
+name = "salva2d"
+version = "0.9.0"
+source = "git+https://github.com/nsjvidana/salva.git?rev=5e5e09f#5e5e09f955b0bca9197ceeb5239b308b213a85f6"
+dependencies = [
+ "approx",
+ "bitflags 2.6.0",
+ "fnv",
+ "generational-arena",
+ "instant",
+ "itertools",
+ "nalgebra",
+ "num-traits",
+ "parry2d",
+ "rapier2d",
 ]
 
 [[package]]

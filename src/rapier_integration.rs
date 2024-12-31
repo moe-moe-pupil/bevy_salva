@@ -1,7 +1,11 @@
-use bevy::prelude::Component;
-use bevy_rapier3d::parry::math::Point;
-use salva3d::object::BoundaryHandle;
-
+use bevy::prelude::{Commands, Component, Entity, Query, ResMut, Without};
+use bevy_rapier::geometry::RapierColliderHandle;
+use bevy_rapier::parry::math::Point;
+use bevy_rapier::plugin::ReadDefaultRapierContext;
+use salva::integrations::rapier::ColliderSampling;
+use salva::object::{Boundary, BoundaryHandle};
+use salva::object::interaction_groups::InteractionGroups;
+use crate::plugin::SalvaContext;
 #[allow(unused_imports)]
 use crate::plugin::SalvaPhysicsPlugin;
 
@@ -36,3 +40,44 @@ pub struct RapierColliderSampling {
 
 #[derive(Component)]
 pub struct ColliderBoundaryHandle(pub BoundaryHandle);
+
+pub fn sample_rapier_colliders(
+    mut commands: Commands,
+    colliders: Query<
+        (Entity, &RapierColliderHandle, &RapierColliderSampling),
+        Without<ColliderBoundaryHandle>,
+    >,
+    mut salva_context: ResMut<SalvaContext>,
+    rapier_context: ReadDefaultRapierContext,
+) {
+    let radius = salva_context.liquid_world.particle_radius();
+    for (entity, co_handle, sampling) in colliders.iter() {
+        let co = rapier_context.colliders.get(co_handle.0).unwrap();
+        let bo_handle = salva_context
+            .liquid_world
+            .add_boundary(Boundary::new(Vec::new(), InteractionGroups::default()));
+        salva_context.coupling.register_coupling(
+            bo_handle,
+            co_handle.0,
+            match &sampling.sampling_method {
+                ColliderSamplingMethod::Static => {
+                    let samples =
+                        salva::sampling::shape_surface_ray_sample(co.shape(), radius).unwrap();
+                    ColliderSampling::StaticSampling(samples)
+                }
+                ColliderSamplingMethod::DynamicContact => {
+                    ColliderSampling::DynamicContactSampling
+                }
+                ColliderSamplingMethod::CustomStatic(samples) => {
+                    ColliderSampling::StaticSampling(samples.clone())
+                }
+            },
+        );
+
+        commands
+            .get_entity(entity)
+            .unwrap()
+            .insert(ColliderBoundaryHandle(bo_handle));
+    }
+}
+

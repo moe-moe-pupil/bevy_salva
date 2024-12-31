@@ -1,37 +1,34 @@
-use crate::rapier_integration::{ColliderSamplingMethod, RapierColliderSampling};
+use bevy_salva3d::rapier_integration::RapierColliderSampling;
 use bevy::math::vec3;
 use bevy::prelude::{Camera3d, Color, FixedUpdate, Gizmos, Isometry3d, Update, Vec3};
 use bevy::{
     app::{App, Startup},
     input::ButtonInput,
-    prelude::{Camera3dBundle, Commands, Entity, KeyCode, Query, Res, ResMut, Transform, With},
+    prelude::{Commands, Entity, KeyCode, Query, Res, ResMut, Transform, With},
     time::{Fixed, Time},
     DefaultPlugins,
 };
 use bevy_flycam::{FlyCam, NoCameraPlayerPlugin};
 use bevy_rapier3d::plugin::DefaultRapierContext;
-use bevy_rapier3d::prelude::{RapierConfiguration, ReadDefaultRapierContext};
+use bevy_rapier3d::prelude::{RapierConfiguration};
 use bevy_rapier3d::{
     na::Vector3,
     plugin::RapierPhysicsPlugin,
     prelude::{Collider, RigidBody},
     render::RapierDebugRenderPlugin,
 };
-use fluid::{FluidParticlePositions, SalvaFluidHandle};
-use plugin::{
+use bevy_salva3d::fluid::{FluidParticlePositions, SalvaFluidHandle};
+use bevy_salva3d::plugin::{
     AppendNonPressureForces, RemoveNonPressureForcesAt, SalvaContext, SalvaPhysicsPlugin,
 };
-use salva3d::solver::{ArtificialViscosity, DFSPHSolver};
-use utils::cube_particle_positions;
+use bevy_salva3d::salva::{
+    solver::{ArtificialViscosity, DFSPHSolver},
+    math::Real
+};
+use bevy_salva3d::utils::cube_particle_positions;
 
-mod fluid;
-mod plugin;
-mod rapier_integration;
-mod systems;
-mod utils;
-
-pub const DEFAULT_PARTICLE_RADIUS: salva3d::math::Real = 0.05;
-pub const DEFAULT_SMOOTHING_FACTOR: salva3d::math::Real = 2.0;
+pub const DEFAULT_PARTICLE_RADIUS: Real = 0.05;
+pub const DEFAULT_SMOOTHING_FACTOR: Real = 2.0;
 
 fn main() {
     let mut app = App::new();
@@ -71,7 +68,7 @@ fn startup(mut commands: Commands, salva_context: Res<SalvaContext>) {
     let mut positions =
         cube_particle_positions(10, 10, 10, salva_context.liquid_world.particle_radius());
     positions.iter_mut().for_each(|p| *p += vec3(0., 5., 0.));
-    let fluid = commands
+    let _fluid = commands
         .spawn((
             FluidParticlePositions { positions },
             AppendNonPressureForces(vec![Box::new(ArtificialViscosity::new(2.0, 0.0))]),
