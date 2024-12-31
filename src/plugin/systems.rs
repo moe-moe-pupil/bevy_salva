@@ -1,6 +1,3 @@
-use crate::rapier_integration::{
-    ColliderBoundaryHandle, ColliderSamplingMethod, RapierColliderSampling,
-};
 use crate::{
     fluid::{FluidDensity, FluidNonPressureForces, FluidParticlePositions, SalvaFluidHandle},
     plugin::{AppendNonPressureForces, RemoveNonPressureForcesAt, SalvaContext},
@@ -8,15 +5,13 @@ use crate::{
 use bevy::prelude::{
     Changed, Commands, Entity, Query, RemovedComponents, Res, ResMut, Time, Without,
 };
-use bevy_rapier::geometry::RapierColliderHandle;
-use bevy_rapier::plugin::ReadDefaultRapierContext;
-use bevy_rapier::prelude::WriteDefaultRapierContext;
-use salva::integrations::rapier::ColliderSampling;
 use salva::math::Vector;
 use salva::object::interaction_groups::InteractionGroups;
-use salva::object::Boundary;
 use salva::{math::Point, object::Fluid};
 
+#[cfg(feature = "rapier")]
+use bevy_rapier::prelude::WriteDefaultRapierContext;
+use crate::math::Vect;
 
 pub fn init_fluids(
     mut commands: Commands,
@@ -122,6 +117,7 @@ pub fn sync_removals(
 //for now, just assume that everything is run in bevy's post update step
 pub fn step_simulation(
     mut salva_context: ResMut<SalvaContext>,
+    #[cfg(feature = "rapier")]
     mut rapier_context: WriteDefaultRapierContext,
     time: Res<Time>,
 ) {
@@ -129,12 +125,14 @@ pub fn step_simulation(
     salva_context.step(
         time.delta_secs(),
         &Vector::new(0., -9.81),
+        #[cfg(feature = "rapier")]
         &mut rapier_context,
     );
     #[cfg(feature = "dim3")]
     salva_context.step(
         time.delta_secs(),
         &Vector::new(0., -9.81, 0.),
+        #[cfg(feature = "rapier")]
         &mut rapier_context,
     );
 }
@@ -146,46 +144,15 @@ pub fn writeback_particle_positions(
     let fluids = salva_context.liquid_world.fluids();
     for (handle, mut particle_positions) in fluid_pos_q.iter_mut() {
         let positions = &fluids.get(handle.0).unwrap().positions;
-        particle_positions.positions = positions.iter().map(|v| v.into()).collect();
+        
+        #[cfg(feature = "dim2")]
+        {
+            particle_positions.positions = positions.iter().map(|v| Vect::new(v.x, v.y)).collect();
+        }
+        #[cfg(feature = "dim3")]
+        {
+            particle_positions.positions = positions.iter().map(|v| Vect::new(v.x, v.y, v.z)).collect();
+        }
     }
 }
 
-pub fn sample_rapier_colliders(
-    mut commands: Commands,
-    colliders: Query<
-        (Entity, &RapierColliderHandle, &RapierColliderSampling),
-        Without<ColliderBoundaryHandle>,
-    >,
-    mut salva_context: ResMut<SalvaContext>,
-    rapier_context: ReadDefaultRapierContext,
-) {
-    let radius = salva_context.liquid_world.particle_radius();
-    for (entity, co_handle, sampling) in colliders.iter() {
-        let co = rapier_context.colliders.get(co_handle.0).unwrap();
-        let bo_handle = salva_context
-            .liquid_world
-            .add_boundary(Boundary::new(Vec::new(), InteractionGroups::default()));
-        salva_context.coupling.register_coupling(
-            bo_handle,
-            co_handle.0,
-            match &sampling.sampling_method {
-                ColliderSamplingMethod::Static => {
-                    let samples =
-                        salva::sampling::shape_surface_ray_sample(co.shape(), radius).unwrap();
-                    ColliderSampling::StaticSampling(samples)
-                }
-                ColliderSamplingMethod::DynamicContact => {
-                    ColliderSampling::DynamicContactSampling
-                }
-                ColliderSamplingMethod::CustomStatic(samples) => {
-                    ColliderSampling::StaticSampling(samples.clone())
-                }
-            },
-        );
-
-        commands
-            .get_entity(entity)
-            .unwrap()
-            .insert(ColliderBoundaryHandle(bo_handle));
-    }
-}

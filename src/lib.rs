@@ -36,5 +36,6 @@ pub mod math {
 
 pub mod plugin;
 pub mod fluid;
+#[cfg(feature = "rapier")]
 pub mod rapier_integration;
 pub mod utils;

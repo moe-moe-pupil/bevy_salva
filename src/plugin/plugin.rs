@@ -10,16 +10,22 @@ use bevy::{
     },
     prelude::{Component, Entity, IntoSystemConfigs, Resource},
 };
-use bevy_rapier::parry::math::Vector;
-use bevy_rapier::plugin::PhysicsSet;
-use bevy_rapier::prelude::RapierContext;
-use salva::integrations::rapier::ColliderCouplingSet;
 use salva::{
     object::FluidHandle,
     solver::{NonPressureForce, PressureSolver},
     LiquidWorld,
 };
+use salva::math::Vector;
 use crate::math::Real;
+
+#[cfg(feature = "rapier")]
+use crate::rapier_integration;
+#[cfg(feature = "rapier")]
+use salva::integrations::rapier::ColliderCouplingSet;
+#[cfg(feature = "rapier")]
+use bevy_rapier::plugin::PhysicsSet;
+#[cfg(feature = "rapier")]
+use bevy_rapier::prelude::RapierContext;
 
 //TODO: use a feature for enabling coupling with bevy_rapier
 pub struct SalvaPhysicsPlugin<S: PressureSolver + Send + Sync + 'static> {
@@ -70,12 +76,30 @@ impl<S: PressureSolver + Send + Sync + 'static> SalvaPhysicsPlugin<S> {
     }
 
     pub fn get_systems(set: SalvaSimulationSet) -> SystemConfigs {
+        #[cfg(feature = "rapier")]
         match set {
             SalvaSimulationSet::SyncBackend => (
                 systems::sync_removals,
                 systems::init_fluids,
                 systems::apply_nonpressure_force_changes,
-                systems::sample_rapier_colliders,
+                rapier_integration::sample_rapier_colliders,
+            )
+                .chain()
+                .in_set(SalvaSimulationSet::SyncBackend),
+            SalvaSimulationSet::StepSimulation => {
+                (systems::step_simulation).in_set(SalvaSimulationSet::StepSimulation)
+            }
+            SalvaSimulationSet::Writeback => (systems::writeback_particle_positions,)
+                .chain()
+                .in_set(SalvaSimulationSet::Writeback),
+        }
+
+        #[cfg(not(feature = "rapier"))]
+        match set {
+            SalvaSimulationSet::SyncBackend => (
+                systems::sync_removals,
+                systems::init_fluids,
+                systems::apply_nonpressure_force_changes,
             )
                 .chain()
                 .in_set(SalvaSimulationSet::SyncBackend),
@@ -92,11 +116,13 @@ impl<S: PressureSolver + Send + Sync + 'static> SalvaPhysicsPlugin<S> {
 #[derive(Resource)]
 pub struct SalvaContext {
     pub liquid_world: LiquidWorld,
+    #[cfg(feature = "rapier")]
     pub coupling: ColliderCouplingSet,
     pub entity2fluid: HashMap<Entity, FluidHandle>,
 }
 
 impl SalvaContext {
+    #[cfg(feature = "rapier")]
     pub fn step(&mut self, dt: f32, gravity: &Vector<f32>, rapier_context: &mut RapierContext) {
         self.liquid_world.step_with_coupling(
             dt,
@@ -104,6 +130,15 @@ impl SalvaContext {
             &mut self
                 .coupling
                 .as_manager_mut(&rapier_context.colliders, &mut rapier_context.bodies),
+        );
+    }
+
+
+    #[cfg(not(feature = "rapier"))]
+    pub fn step(&mut self, dt: f32, gravity: &Vector<f32>) {
+        self.liquid_world.step(
+            dt,
+            gravity
         );
     }
 }
@@ -124,6 +159,7 @@ impl<S: PressureSolver + Send + Sync + 'static> Plugin for SalvaPhysicsPlugin<S>
         app.insert_resource(SalvaContext {
             liquid_world: LiquidWorld::new(solver, self.particle_radius, self.smoothing_factor),
             entity2fluid: HashMap::default(),
+            #[cfg(feature = "rapier")]
             coupling: ColliderCouplingSet::new(),
         });
 
@@ -133,7 +169,8 @@ impl<S: PressureSolver + Send + Sync + 'static> Plugin for SalvaPhysicsPlugin<S>
                 (systems::sync_removals,).before(TransformSystem::TransformPropagate),
             );
         }
-
+        
+        #[cfg(feature = "rapier")]
         if self.default_rapier_coupling_config {
             app.configure_sets(
                 self.schedule,
