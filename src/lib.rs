@@ -35,3 +35,7 @@ pub mod math {
     pub type Rot = Quat;
 }
 
+pub mod plugin;
+pub mod fluid;
+pub mod rapier_integration;
+pub mod utils;
