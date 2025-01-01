@@ -1,6 +1,6 @@
 use crate::{
     fluid::{FluidDensity, FluidNonPressureForces, FluidParticlePositions, SalvaFluidHandle},
-    plugin::{AppendNonPressureForces, RemoveNonPressureForcesAt, SalvaContext},
+    plugin::SalvaContext,
 };
 use bevy::prelude::{
     Changed, Commands, Entity, Query, RemovedComponents, Res, ResMut, Time, Without,
@@ -11,6 +11,7 @@ use salva::{math::Point, object::Fluid};
 
 #[cfg(feature = "rapier")]
 use bevy_rapier::prelude::WriteDefaultRapierContext;
+use crate::fluid::{AppendNonPressureForces, RemoveNonPressureForcesAt};
 use crate::math::Vect;
 
 pub fn init_fluids(

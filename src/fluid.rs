@@ -1,4 +1,4 @@
-use bevy::{prelude::Component};
+use bevy::prelude::Component;
 use salva::{object::FluidHandle, solver::NonPressureForce};
 use crate::math::{Real, Vect};
 
@@ -24,3 +24,9 @@ impl Default for FluidDensity {
 
 #[derive(Component)]
 pub struct FluidNonPressureForces(pub Vec<Box<dyn NonPressureForce>>);
+
+#[derive(Component)]
+pub struct AppendNonPressureForces(pub Vec<Box<dyn NonPressureForce>>);
+
+#[derive(Component)]
+pub struct RemoveNonPressureForcesAt(pub Vec<usize>);

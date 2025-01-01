@@ -8,11 +8,11 @@ use bevy::{
         intern::Interned,
         schedule::{ScheduleLabel, SystemConfigs},
     },
-    prelude::{Component, Entity, IntoSystemConfigs, Resource},
+    prelude::{Entity, IntoSystemConfigs, Resource},
 };
 use salva::{
     object::FluidHandle,
-    solver::{NonPressureForce, PressureSolver},
+    solver::PressureSolver,
     LiquidWorld,
 };
 use salva::math::Vector;
@@ -113,6 +113,54 @@ impl<S: PressureSolver + Send + Sync + 'static> SalvaPhysicsPlugin<S> {
     }
 }
 
+impl<S: PressureSolver + Send + Sync + 'static> Plugin for SalvaPhysicsPlugin<S> {
+    fn build(&self, app: &mut bevy::prelude::App) {
+        // SAFETY: this is fine because self.solver is private, meaning that
+        //         self.solver cannot be accessed after the app closes
+        let solver: S = unsafe { std::mem::transmute_copy(&self.solver) };
+
+        app.insert_resource(SalvaContext {
+            liquid_world: LiquidWorld::new(solver, self.particle_radius, self.smoothing_factor),
+            entity2fluid: HashMap::default(),
+            #[cfg(feature = "rapier")]
+            coupling: ColliderCouplingSet::new(),
+        });
+
+        if self.schedule != PostUpdate.intern() {
+            app.add_systems(
+                PostUpdate,
+                (systems::sync_removals,).before(TransformSystem::TransformPropagate),
+            );
+        }
+
+        #[cfg(feature = "rapier")]
+        if self.default_rapier_coupling_config {
+            app.configure_sets(
+                self.schedule,
+                (
+                    SalvaSimulationSet::SyncBackend,
+                    SalvaSimulationSet::StepSimulation,
+                    SalvaSimulationSet::Writeback,
+                )
+                    .chain()
+                    .before(TransformSystem::TransformPropagate)
+                    .after(PhysicsSet::Writeback),
+            );
+
+            app.add_systems(
+                self.schedule,
+                (
+                    Self::get_systems(SalvaSimulationSet::SyncBackend),
+                    Self::get_systems(SalvaSimulationSet::StepSimulation),
+                    Self::get_systems(SalvaSimulationSet::Writeback),
+                ),
+            );
+
+            //TODO: implement a TimestepMode like how bevy_rapier has it
+        }
+    }
+}
+
 #[derive(Resource)]
 pub struct SalvaContext {
     pub liquid_world: LiquidWorld,
@@ -149,57 +197,3 @@ pub enum SalvaSimulationSet {
     StepSimulation,
     Writeback,
 }
-
-impl<S: PressureSolver + Send + Sync + 'static> Plugin for SalvaPhysicsPlugin<S> {
-    fn build(&self, app: &mut bevy::prelude::App) {
-        // SAFETY: this is fine because self.solver is private, meaning that
-        //         self.solver cannot be accessed after the app closes
-        let solver: S = unsafe { std::mem::transmute_copy(&self.solver) };
-
-        app.insert_resource(SalvaContext {
-            liquid_world: LiquidWorld::new(solver, self.particle_radius, self.smoothing_factor),
-            entity2fluid: HashMap::default(),
-            #[cfg(feature = "rapier")]
-            coupling: ColliderCouplingSet::new(),
-        });
-
-        if self.schedule != PostUpdate.intern() {
-            app.add_systems(
-                PostUpdate,
-                (systems::sync_removals,).before(TransformSystem::TransformPropagate),
-            );
-        }
-        
-        #[cfg(feature = "rapier")]
-        if self.default_rapier_coupling_config {
-            app.configure_sets(
-                self.schedule,
-                (
-                    SalvaSimulationSet::SyncBackend,
-                    SalvaSimulationSet::StepSimulation,
-                    SalvaSimulationSet::Writeback,
-                )
-                    .chain()
-                    .before(TransformSystem::TransformPropagate)
-                    .after(PhysicsSet::Writeback),
-            );
-
-            app.add_systems(
-                self.schedule,
-                (
-                    Self::get_systems(SalvaSimulationSet::SyncBackend),
-                    Self::get_systems(SalvaSimulationSet::StepSimulation),
-                    Self::get_systems(SalvaSimulationSet::Writeback),
-                ),
-            );
-
-            //TODO: implement a TimestepMode like how bevy_rapier has it
-        }
-    }
-}
-
-#[derive(Component)]
-pub struct AppendNonPressureForces(pub Vec<Box<dyn NonPressureForce>>);
-
-#[derive(Component)]
-pub struct RemoveNonPressureForcesAt(pub Vec<usize>);
