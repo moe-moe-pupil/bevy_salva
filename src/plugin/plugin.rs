@@ -8,14 +8,12 @@ use bevy::{
         intern::Interned,
         schedule::{ScheduleLabel, SystemConfigs},
     },
-    prelude::{Entity, IntoSystemConfigs, Resource},
+    prelude::IntoSystemConfigs,
 };
 use salva::{
-    object::FluidHandle,
     solver::PressureSolver,
     LiquidWorld,
 };
-use salva::math::Vector;
 use crate::math::Real;
 
 #[cfg(feature = "rapier")]
@@ -24,8 +22,7 @@ use crate::rapier_integration;
 use salva::integrations::rapier::ColliderCouplingSet;
 #[cfg(feature = "rapier")]
 use bevy_rapier::plugin::PhysicsSet;
-#[cfg(feature = "rapier")]
-use bevy_rapier::prelude::RapierContext;
+use crate::plugin::salva_context::SalvaContext;
 
 //TODO: use a feature for enabling coupling with bevy_rapier
 pub struct SalvaPhysicsPlugin<S: PressureSolver + Send + Sync + 'static> {
@@ -158,36 +155,6 @@ impl<S: PressureSolver + Send + Sync + 'static> Plugin for SalvaPhysicsPlugin<S>
 
             //TODO: implement a TimestepMode like how bevy_rapier has it
         }
-    }
-}
-
-#[derive(Resource)]
-pub struct SalvaContext {
-    pub liquid_world: LiquidWorld,
-    #[cfg(feature = "rapier")]
-    pub coupling: ColliderCouplingSet,
-    pub entity2fluid: HashMap<Entity, FluidHandle>,
-}
-
-impl SalvaContext {
-    #[cfg(feature = "rapier")]
-    pub fn step(&mut self, dt: f32, gravity: &Vector<f32>, rapier_context: &mut RapierContext) {
-        self.liquid_world.step_with_coupling(
-            dt,
-            gravity,
-            &mut self
-                .coupling
-                .as_manager_mut(&rapier_context.colliders, &mut rapier_context.bodies),
-        );
-    }
-
-
-    #[cfg(not(feature = "rapier"))]
-    pub fn step(&mut self, dt: f32, gravity: &Vector<f32>) {
-        self.liquid_world.step(
-            dt,
-            gravity
-        );
     }
 }
 
