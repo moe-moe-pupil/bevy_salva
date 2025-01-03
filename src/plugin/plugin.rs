@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::plugin::{systems, DefaultSalvaContext, SalvaContextEntityLink};
-use bevy::prelude::{warn, Commands, IntoSystemSetConfigs, Name, PreStartup, Reflect, Res, Resource, SystemSet, TransformSystem};
+use bevy::prelude::{warn, Commands, Entity, IntoSystemSetConfigs, Name, PostStartup, PreStartup, Query, Reflect, Res, Resource, Startup, SystemSet, TransformSystem, With, Without, World};
 use bevy::{
     app::{Plugin, PostUpdate},
     ecs::{
@@ -15,15 +15,14 @@ use salva::{
     LiquidWorld,
 };
 use crate::math::Real;
+use salva::solver::DFSPHSolver;
+use crate::plugin::salva_context::SalvaContext;
 
 #[cfg(feature = "rapier")]
 use crate::rapier_integration;
 #[cfg(feature = "rapier")]
-use salva::integrations::rapier::ColliderCouplingSet;
-#[cfg(feature = "rapier")]
 use bevy_rapier::plugin::PhysicsSet;
-use salva::solver::DFSPHSolver;
-use crate::plugin::salva_context::SalvaContext;
+use crate::rapier_integration::link_default_contexts;
 
 //TODO: use a feature for enabling coupling with bevy_rapier
 pub struct SalvaPhysicsPlugin {
@@ -153,6 +152,11 @@ impl Plugin for SalvaPhysicsPlugin {
                 ),
             );
 
+            // This system needs to run a bit later because the system that initializes the default
+            // rapier context isn't public.
+            #[cfg(feature = "rapier")]
+            app.add_systems(PostStartup, link_default_contexts.before(SalvaSimulationSet::SyncBackend));
+
             //TODO: implement a TimestepMode like how bevy_rapier has it
         }
     }
@@ -203,8 +207,6 @@ pub fn insert_default_world(
                 SalvaContext {
                     liquid_world: LiquidWorld::new(solver, *particle_radius, *smoothing_factor),
                     entity2fluid: HashMap::default(),
-                    #[cfg(feature = "rapier")]
-                    coupling: ColliderCouplingSet::new(),
                 },
                 DefaultSalvaContext,
             ));
