@@ -85,19 +85,21 @@ pub fn init_fluids(
     }
 }
 
-pub fn apply_nonpressure_force_changes(
+pub fn apply_fluid_user_changes(
+    mut q_contexts: WriteSalvaContext,
     mut append_q: Query<
-        (&SalvaFluidHandle, &mut AppendNonPressureForces),
+        (&SalvaFluidHandle, &SalvaContextEntityLink, &mut AppendNonPressureForces),
         Changed<AppendNonPressureForces>,
     >,
     mut remove_at_q: Query<
-        (&SalvaFluidHandle, &mut RemoveNonPressureForcesAt),
+        (&SalvaFluidHandle, &SalvaContextEntityLink, &mut RemoveNonPressureForcesAt),
         Changed<RemoveNonPressureForcesAt>,
     >,
-    mut salva_context: ResMut<SalvaContext>,
 ) {
-    for (handle, mut appends) in append_q.iter_mut() {
-        salva_context
+    // Handles nonpressure forces the user wants to append to fluids
+    for (handle, link, mut appends) in append_q.iter_mut() {
+        let context = q_contexts.context(link);
+        context
             .liquid_world
             .fluids_mut()
             .get_mut(handle.0)
@@ -106,17 +108,17 @@ pub fn apply_nonpressure_force_changes(
             .append(&mut appends.0);
     }
 
-    for (handle, mut removals) in remove_at_q.iter_mut() {
-        let nonpressure_forces = &mut salva_context
+    // Handles nonpressure forces the user wants to remove from fluids
+    for (handle, link, mut removals) in remove_at_q.iter_mut() {
+        let context = q_contexts.context(link);
+        let nonpressure_forces = &mut context
             .liquid_world
             .fluids_mut()
             .get_mut(handle.0)
             .unwrap()
             .nonpressure_forces;
 
-        for i in removals.0.iter() {
-            nonpressure_forces.remove(*i);
-        }
+        for i in removals.0.iter() { nonpressure_forces.remove(*i); }
         removals.0.clear();
     }
 }

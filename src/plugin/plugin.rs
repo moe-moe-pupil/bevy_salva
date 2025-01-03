@@ -68,7 +68,7 @@ impl SalvaPhysicsPlugin<S> {
             SalvaSimulationSet::SyncBackend => (
                 systems::sync_removals,
                 systems::init_fluids,
-                systems::apply_nonpressure_force_changes,
+                systems::apply_fluid_user_changes,
                 rapier_integration::sample_rapier_colliders,
             )
                 .chain()
@@ -86,7 +86,7 @@ impl SalvaPhysicsPlugin<S> {
             SalvaSimulationSet::SyncBackend => (
                 systems::sync_removals,
                 systems::init_fluids,
-                systems::apply_nonpressure_force_changes,
+                systems::apply_fluid_user_changes,
             )
                 .chain()
                 .in_set(SalvaSimulationSet::SyncBackend),
