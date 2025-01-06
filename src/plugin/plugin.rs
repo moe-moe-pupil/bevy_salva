@@ -1,52 +1,46 @@
 use std::collections::HashMap;
 
-use crate::plugin::systems;
-use bevy::prelude::{IntoSystemSetConfigs, SystemSet, TransformSystem};
+use crate::plugin::{systems, DefaultSalvaContext, SalvaContextEntityLink};
+use bevy::prelude::{warn, Commands, Entity, IntoSystemSetConfigs, Name, PostStartup, PreStartup, Query, Reflect, Res, Resource, Startup, SystemSet, TransformSystem, With, Without, World};
 use bevy::{
     app::{Plugin, PostUpdate},
     ecs::{
         intern::Interned,
         schedule::{ScheduleLabel, SystemConfigs},
     },
-    prelude::{Entity, IntoSystemConfigs, Resource},
+    prelude::IntoSystemConfigs,
 };
 use salva::{
-    object::FluidHandle,
     solver::PressureSolver,
     LiquidWorld,
 };
-use salva::math::Vector;
 use crate::math::Real;
+use salva::solver::DFSPHSolver;
+use crate::plugin::salva_context::SalvaContext;
 
 #[cfg(feature = "rapier")]
 use crate::rapier_integration;
 #[cfg(feature = "rapier")]
-use salva::integrations::rapier::ColliderCouplingSet;
-#[cfg(feature = "rapier")]
 use bevy_rapier::plugin::PhysicsSet;
-#[cfg(feature = "rapier")]
-use bevy_rapier::prelude::RapierContext;
 
-//TODO: use a feature for enabling coupling with bevy_rapier
-pub struct SalvaPhysicsPlugin<S: PressureSolver + Send + Sync + 'static> {
+pub struct SalvaPhysicsPlugin {
     schedule: Interned<dyn ScheduleLabel>,
-    default_rapier_coupling_config: bool,
-    solver: S,
-    particle_radius: Real,
-    smoothing_factor: Real,
+    default_system_setup: bool,
+    world_setup: SalvaContextInitialization,
 }
 
-impl<S: PressureSolver + Send + Sync + 'static> SalvaPhysicsPlugin<S> {
+impl SalvaPhysicsPlugin {
     pub const DEFAULT_PARTICLE_RADIUS: Real = 0.05;
     pub const DEFAULT_SMOOTHING_FACTOR: Real = 2.0;
 
-    pub fn new(solver: S) -> Self {
+    pub fn new() -> Self {
         Self {
             schedule: PostUpdate.intern(),
-            default_rapier_coupling_config: true,
-            solver,
-            particle_radius: Self::DEFAULT_PARTICLE_RADIUS,
-            smoothing_factor: Self::DEFAULT_SMOOTHING_FACTOR,
+            default_system_setup: true,
+            world_setup: SalvaContextInitialization::InitializeDefaultSalvaContext {
+                particle_radius: Self::DEFAULT_PARTICLE_RADIUS,
+                smoothing_factor: Self::DEFAULT_SMOOTHING_FACTOR
+            }
         }
     }
 
@@ -55,43 +49,44 @@ impl<S: PressureSolver + Send + Sync + 'static> SalvaPhysicsPlugin<S> {
         self
     }
 
-    pub fn with_solver(mut self, solver: S) -> Self {
-        self.solver = solver;
+    pub fn with_custom_world_initialization(mut self, world_setup: SalvaContextInitialization) -> Self {
+        self.world_setup = world_setup;
         self
     }
 
-    pub fn with_particle_radius(mut self, particle_radius: Real) -> Self {
-        self.particle_radius = particle_radius;
-        self
-    }
-
-    pub fn with_smoothing_factor(mut self, smoothing_factor: Real) -> Self {
-        self.smoothing_factor = smoothing_factor;
-        self
-    }
-
-    pub fn use_default_rapier_coupling(mut self, use_default_coupling: bool) -> Self {
-        self.default_rapier_coupling_config = use_default_coupling;
+    pub fn with_default_system_setup(mut self, use_default_coupling: bool) -> Self {
+        self.default_system_setup = use_default_coupling;
         self
     }
 
     pub fn get_systems(set: SalvaSimulationSet) -> SystemConfigs {
         #[cfg(feature = "rapier")]
         match set {
-            SalvaSimulationSet::SyncBackend => (
-                systems::sync_removals,
-                systems::init_fluids,
-                systems::apply_nonpressure_force_changes,
-                rapier_integration::sample_rapier_colliders,
-            )
-                .chain()
-                .in_set(SalvaSimulationSet::SyncBackend),
+            SalvaSimulationSet::SyncBackend => {
+                (
+                    systems::sync_removals,
+                    systems::init_fluids,
+                    systems::apply_fluid_user_changes,
+                    rapier_integration::sample_rapier_colliders,
+                )
+                    .chain()
+                    .in_set(SalvaSimulationSet::SyncBackend)
+                    .after(PhysicsSet::SyncBackend)
+            },
             SalvaSimulationSet::StepSimulation => {
-                (systems::step_simulation).in_set(SalvaSimulationSet::StepSimulation)
+                (
+                    systems::step_simulation,
+                    rapier_integration::step_simulation_rapier_coupling
+                )
+                    .in_set(SalvaSimulationSet::StepSimulation)
+                    .after(PhysicsSet::StepSimulation)
             }
-            SalvaSimulationSet::Writeback => (systems::writeback_particle_positions,)
-                .chain()
-                .in_set(SalvaSimulationSet::Writeback),
+            SalvaSimulationSet::Writeback => {
+                (systems::writeback_particle_positions,)
+                    .chain()
+                    .in_set(SalvaSimulationSet::Writeback)
+                    .after(PhysicsSet::Writeback)
+            },
         }
 
         #[cfg(not(feature = "rapier"))]
@@ -99,7 +94,7 @@ impl<S: PressureSolver + Send + Sync + 'static> SalvaPhysicsPlugin<S> {
             SalvaSimulationSet::SyncBackend => (
                 systems::sync_removals,
                 systems::init_fluids,
-                systems::apply_nonpressure_force_changes,
+                systems::apply_fluid_user_changes,
             )
                 .chain()
                 .in_set(SalvaSimulationSet::SyncBackend),
@@ -113,18 +108,28 @@ impl<S: PressureSolver + Send + Sync + 'static> SalvaPhysicsPlugin<S> {
     }
 }
 
-impl<S: PressureSolver + Send + Sync + 'static> Plugin for SalvaPhysicsPlugin<S> {
+impl Plugin for SalvaPhysicsPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        // SAFETY: this is fine because self.solver is private, meaning that
-        //         self.solver cannot be accessed after the app closes
-        let solver: S = unsafe { std::mem::transmute_copy(&self.solver) };
+        app
+            .register_type::<DefaultSalvaContext>()
+            .register_type::<SalvaContextInitialization>()
+            .register_type::<SalvaContextEntityLink>();
 
-        app.insert_resource(SalvaContext {
-            liquid_world: LiquidWorld::new(solver, self.particle_radius, self.smoothing_factor),
-            entity2fluid: HashMap::default(),
-            #[cfg(feature = "rapier")]
-            coupling: ColliderCouplingSet::new(),
-        });
+        let default_world_init = app.world().get_resource::<SalvaContextInitialization>();
+        if let Some(world_init) = default_world_init {
+            warn!("SalvaPhysicsPlugin added but a `SalvaContextInitialization` resource was already existing.\
+            This might overwrite previous configuration made via `SalvaPhysicsPlugin::with_custom_initialization`\
+            or `SalvaPhysicsPlugin::with_length_unit`.
+            The following resource will be used: {:?}", world_init);
+        } else {
+            app.insert_resource(self.world_setup.clone());
+        }
+
+        app.add_systems(
+            PreStartup,
+            (insert_default_world,)
+                .chain()
+        );
 
         if self.schedule != PostUpdate.intern() {
             app.add_systems(
@@ -133,8 +138,20 @@ impl<S: PressureSolver + Send + Sync + 'static> Plugin for SalvaPhysicsPlugin<S>
             );
         }
 
-        #[cfg(feature = "rapier")]
-        if self.default_rapier_coupling_config {
+        if self.default_system_setup {
+            #[cfg(not(feature = "rapier"))]
+            app.configure_sets(
+                self.schedule,
+                (
+                    SalvaSimulationSet::SyncBackend,
+                    SalvaSimulationSet::StepSimulation,
+                    SalvaSimulationSet::Writeback,
+                )
+                    .chain()
+                    .before(TransformSystem::TransformPropagate)
+            );
+
+            #[cfg(feature = "rapier")]
             app.configure_sets(
                 self.schedule,
                 (
@@ -156,39 +173,41 @@ impl<S: PressureSolver + Send + Sync + 'static> Plugin for SalvaPhysicsPlugin<S>
                 ),
             );
 
+            // This system needs to run a bit later to ensure that the default RapierContext is created.
+            // The system that initializes the default rapier context isn't public, so this is the workaround
+            // for now.
+            #[cfg(feature = "rapier")]
+            app.add_systems(
+                PostStartup,
+                rapier_integration::link_default_contexts.before(SalvaSimulationSet::SyncBackend)
+            );
+
             //TODO: implement a TimestepMode like how bevy_rapier has it
         }
     }
 }
 
-#[derive(Resource)]
-pub struct SalvaContext {
-    pub liquid_world: LiquidWorld,
-    #[cfg(feature = "rapier")]
-    pub coupling: ColliderCouplingSet,
-    pub entity2fluid: HashMap<Entity, FluidHandle>,
-}
-
-impl SalvaContext {
-    #[cfg(feature = "rapier")]
-    pub fn step(&mut self, dt: f32, gravity: &Vector<f32>, rapier_context: &mut RapierContext) {
-        self.liquid_world.step_with_coupling(
-            dt,
-            gravity,
-            &mut self
-                .coupling
-                .as_manager_mut(&rapier_context.colliders, &mut rapier_context.bodies),
-        );
-    }
-
-
-    #[cfg(not(feature = "rapier"))]
-    pub fn step(&mut self, dt: f32, gravity: &Vector<f32>) {
-        self.liquid_world.step(
-            dt,
-            gravity
-        );
-    }
+/// Specifies a default configuration for the default [`SalvaContext`]
+///
+/// Designed to be passed as parameter to [`SalvaPhysicsPlugin::with_custom_world_initialization`].
+#[derive(Resource, Debug, Reflect, Clone)]
+pub enum SalvaContextInitialization {
+    /// [`SalvaPhysicsPlugin`] will not spawn any entity containing [`SalvaContext`] automatically.
+    ///
+    /// You are responsible for creating a [`SalvaContext`],
+    /// before spawning any Salva entities (rigidbodies, colliders, joints).
+    ///
+    /// You might be interested in adding [`DefaultSalvaContext`] to the created world.
+    NoAutomaticSalvaContext,
+    /// [`SalvaPhysicsPlugin`] will spawn an entity containing a [`SalvaContext`]
+    /// automatically during [`PreStartup`], with the [`DefaultSalvaContext`] marker component.
+    ///
+    InitializeDefaultSalvaContext {
+        /// See [`LiquidWorld::new()`] for information on `particle_radius`
+        particle_radius: salva::math::Real,
+        /// See [`LiquidWorld::new()`] for information on `smoothing_factor`
+        smoothing_factor: salva::math::Real,
+    },
 }
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
@@ -196,4 +215,27 @@ pub enum SalvaSimulationSet {
     SyncBackend,
     StepSimulation,
     Writeback,
+}
+
+pub fn insert_default_world(
+    mut commands: Commands,
+    initialization_data: Res<SalvaContextInitialization>,
+) {
+    match initialization_data.as_ref() {
+        SalvaContextInitialization::NoAutomaticSalvaContext => {}
+        SalvaContextInitialization::InitializeDefaultSalvaContext {
+            particle_radius, smoothing_factor
+        } => {
+            let solver: DFSPHSolver = DFSPHSolver::new();
+            // Required SalvaConfiguration is added automatically w/ default values
+            commands.spawn((
+                Name::new("Salva Context"),
+                SalvaContext {
+                    liquid_world: LiquidWorld::new(solver, *particle_radius, *smoothing_factor),
+                    entity2fluid: HashMap::default(),
+                },
+                DefaultSalvaContext,
+            ));
+        }
+    }
 }
