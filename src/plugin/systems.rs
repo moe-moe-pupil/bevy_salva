@@ -1,4 +1,4 @@
-use crate::fluid::{FluidDensity, FluidNonPressureForces, FluidParticlePositions, SalvaFluidHandle};
+use crate::fluid::{FluidDensity, FluidInteractionGroups, FluidNonPressureForces, FluidParticlePositions, SalvaFluidHandle};
 use bevy::prelude::{error, warn, Changed, Commands, Entity, Query, RemovedComponents, Res, ResMut, Time, With, Without};
 use salva::math::Vector;
 use salva::object::interaction_groups::InteractionGroups;
@@ -14,10 +14,11 @@ pub fn init_fluids(
     mut new_fluids: Query<
         (
             Entity,
+            Option<&SalvaContextEntityLink>,
             &FluidParticlePositions,
             Option<&FluidDensity>,
             Option<&mut FluidNonPressureForces>,
-            Option<&SalvaContextEntityLink>
+            Option<&FluidInteractionGroups>,
         ),
         Without<SalvaFluidHandle>,
     >,
@@ -26,10 +27,11 @@ pub fn init_fluids(
 ) {
     for (
         entity,
+        context_link,
         particle_positions,
         density,
         nonpressure_forces,
-        context_link
+        fluid_interaction_groups,
     ) in new_fluids.iter_mut() {
         let mut entity_cmd = commands.entity(entity);
 
@@ -66,11 +68,15 @@ pub fn init_fluids(
             continue;
         };
 
+
         let mut salva_fluid = Fluid::new(
             particle_positions,
             context.liquid_world.particle_radius(),
             density,
-            InteractionGroups::default(), //TODO: make this an optional ecs component instead
+            fluid_interaction_groups.map_or_else(
+                || InteractionGroups::default(),
+                |groups| (*groups).into()
+            )
         );
         if let Some(mut nonpressure_forces) = nonpressure_forces {
             salva_fluid

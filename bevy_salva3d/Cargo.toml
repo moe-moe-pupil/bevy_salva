@@ -23,6 +23,7 @@ required-features = ["dim3"]
 nalgebra = { version = "0.33", features = ["convert-glam029"] }
 bevy = "0.15.0"
 bevy_rapier3d = { version = "0.28.0", optional = true }
+bitflags = "2.6.0"
 
 [dependencies.salva3d]
 git = "https://github.com/nsjvidana/salva.git"

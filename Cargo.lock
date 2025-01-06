@@ -1009,6 +1009,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_rapier2d",
+ "bitflags 2.6.0",
  "nalgebra",
  "salva2d",
 ]
@@ -1019,6 +1020,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy_rapier3d",
+ "bitflags 2.6.0",
  "nalgebra",
  "salva3d",
 ]

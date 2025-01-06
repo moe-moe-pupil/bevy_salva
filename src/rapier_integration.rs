@@ -2,7 +2,8 @@ use bevy::prelude::{Commands, Component, Entity, Query, Res, ResMut, Time, With,
 use bevy_rapier::geometry::RapierColliderHandle;
 use bevy_rapier::parry::math::Point;
 use bevy_rapier::plugin::{DefaultRapierContext, RapierConfiguration, ReadDefaultRapierContext, WriteRapierContext};
-use bevy_rapier::prelude::{RapierContextAccess, RapierContextEntityLink};
+use bevy_rapier::prelude::{CollisionGroups, RapierContextAccess, RapierContextEntityLink};
+use bitflags::Flags;
 use salva::integrations::rapier::{ColliderCouplingSet, ColliderSampling};
 use salva::math::Vector;
 use salva::object::{Boundary, BoundaryHandle};
@@ -90,7 +91,14 @@ pub fn step_simulation_rapier_coupling(
 pub fn sample_rapier_colliders(
     mut commands: Commands,
     colliders: Query<
-        (Entity, &RapierContextEntityLink, &RapierColliderHandle, &RapierColliderSampling, Option<&SalvaContextEntityLink>),
+        (
+            Entity,
+            &RapierContextEntityLink,
+            Option<&SalvaContextEntityLink>,
+            &RapierColliderHandle,
+            &RapierColliderSampling,
+            Option<&CollisionGroups>,
+        ),
         Without<ColliderBoundaryHandle>,
     >,
     mut rapier_coupling_q: Query<&mut SalvaRapierCoupling>,
@@ -101,9 +109,10 @@ pub fn sample_rapier_colliders(
     for (
         entity,
         rapier_link,
+        salva_link,
         co_handle,
         sampling,
-        salva_link
+        collision_groups,
     ) in colliders.iter() {
         let mut entity_cmd = commands.entity(entity);
         let salva_link = salva_link.map_or_else(
@@ -124,7 +133,18 @@ pub fn sample_rapier_colliders(
 
         let bo_handle = salva_context
             .liquid_world
-            .add_boundary(Boundary::new(Vec::new(), InteractionGroups::default()));
+            .add_boundary(Boundary::new(
+                Vec::new(),
+                collision_groups.map_or_else(
+                    || InteractionGroups::default(),
+                    |groups| InteractionGroups {
+                        memberships: salva::object::interaction_groups::Group::from_bits(groups.memberships.bits())
+                            .unwrap(),
+                        filter: salva::object::interaction_groups::Group::from_bits(groups.filters.bits())
+                            .unwrap(),
+                    }
+                )
+            ));
         coupling.register_coupling(
             bo_handle,
             co_handle.0,
