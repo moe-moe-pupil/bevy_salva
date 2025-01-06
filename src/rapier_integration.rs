@@ -87,7 +87,7 @@ pub fn step_simulation_rapier_coupling(
 
 /// The system responsible for sampling/coupling rapier colliders for rapier-salva coupling
 /// by converting them into fluid boundaries.
-pub fn sample_rapier_colliders(// TODO: make this (and other systems) run after rapier physics
+pub fn sample_rapier_colliders(
     mut commands: Commands,
     colliders: Query<
         (Entity, &RapierContextEntityLink, &RapierColliderHandle, &RapierColliderSampling, Option<&SalvaContextEntityLink>),

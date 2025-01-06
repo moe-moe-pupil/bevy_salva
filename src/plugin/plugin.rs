@@ -23,10 +23,9 @@ use crate::rapier_integration;
 #[cfg(feature = "rapier")]
 use bevy_rapier::plugin::PhysicsSet;
 
-//TODO: use a feature for enabling coupling with bevy_rapier
 pub struct SalvaPhysicsPlugin {
     schedule: Interned<dyn ScheduleLabel>,
-    default_rapier_coupling_config: bool,
+    default_system_setup: bool,
     world_setup: SalvaContextInitialization,
 }
 
@@ -37,7 +36,7 @@ impl SalvaPhysicsPlugin {
     pub fn new() -> Self {
         Self {
             schedule: PostUpdate.intern(),
-            default_rapier_coupling_config: true,
+            default_system_setup: true,
             world_setup: SalvaContextInitialization::InitializeDefaultSalvaContext {
                 particle_radius: Self::DEFAULT_PARTICLE_RADIUS,
                 smoothing_factor: Self::DEFAULT_SMOOTHING_FACTOR
@@ -50,36 +49,44 @@ impl SalvaPhysicsPlugin {
         self
     }
 
-    pub fn with_custom_initialization(mut self, world_setup: SalvaContextInitialization) -> Self {
+    pub fn with_custom_world_initialization(mut self, world_setup: SalvaContextInitialization) -> Self {
         self.world_setup = world_setup;
         self
     }
 
-    pub fn use_default_rapier_coupling(mut self, use_default_coupling: bool) -> Self {
-        self.default_rapier_coupling_config = use_default_coupling;
+    pub fn with_default_system_setup(mut self, use_default_coupling: bool) -> Self {
+        self.default_system_setup = use_default_coupling;
         self
     }
 
     pub fn get_systems(set: SalvaSimulationSet) -> SystemConfigs {
         #[cfg(feature = "rapier")]
         match set {
-            SalvaSimulationSet::SyncBackend => (
-                systems::sync_removals,
-                systems::init_fluids,
-                systems::apply_fluid_user_changes,
-                rapier_integration::sample_rapier_colliders,
-            )
-                .chain()
-                .in_set(SalvaSimulationSet::SyncBackend),
+            SalvaSimulationSet::SyncBackend => {
+                (
+                    systems::sync_removals,
+                    systems::init_fluids,
+                    systems::apply_fluid_user_changes,
+                    rapier_integration::sample_rapier_colliders,
+                )
+                    .chain()
+                    .in_set(SalvaSimulationSet::SyncBackend)
+                    .after(PhysicsSet::SyncBackend)
+            },
             SalvaSimulationSet::StepSimulation => {
                 (
                     systems::step_simulation,
                     rapier_integration::step_simulation_rapier_coupling
-                ).in_set(SalvaSimulationSet::StepSimulation)
+                )
+                    .in_set(SalvaSimulationSet::StepSimulation)
+                    .after(PhysicsSet::StepSimulation)
             }
-            SalvaSimulationSet::Writeback => (systems::writeback_particle_positions,)
-                .chain()
-                .in_set(SalvaSimulationSet::Writeback),
+            SalvaSimulationSet::Writeback => {
+                (systems::writeback_particle_positions,)
+                    .chain()
+                    .in_set(SalvaSimulationSet::Writeback)
+                    .after(PhysicsSet::Writeback)
+            },
         }
 
         #[cfg(not(feature = "rapier"))]
@@ -131,8 +138,20 @@ impl Plugin for SalvaPhysicsPlugin {
             );
         }
 
-        #[cfg(feature = "rapier")]
-        if self.default_rapier_coupling_config {
+        if self.default_system_setup {
+            #[cfg(not(feature = "rapier"))]
+            app.configure_sets(
+                self.schedule,
+                (
+                    SalvaSimulationSet::SyncBackend,
+                    SalvaSimulationSet::StepSimulation,
+                    SalvaSimulationSet::Writeback,
+                )
+                    .chain()
+                    .before(TransformSystem::TransformPropagate)
+            );
+
+            #[cfg(feature = "rapier")]
             app.configure_sets(
                 self.schedule,
                 (
@@ -154,8 +173,9 @@ impl Plugin for SalvaPhysicsPlugin {
                 ),
             );
 
-            // This system needs to run a bit later because the system that initializes the default
-            // rapier context isn't public.
+            // This system needs to run a bit later to ensure that the default RapierContext is created.
+            // The system that initializes the default rapier context isn't public, so this is the workaround
+            // for now.
             #[cfg(feature = "rapier")]
             app.add_systems(
                 PostStartup,
@@ -169,7 +189,7 @@ impl Plugin for SalvaPhysicsPlugin {
 
 /// Specifies a default configuration for the default [`SalvaContext`]
 ///
-/// Designed to be passed as parameter to [`SalvaPhysicsPlugin::with_custom_initialization`].
+/// Designed to be passed as parameter to [`SalvaPhysicsPlugin::with_custom_world_initialization`].
 #[derive(Resource, Debug, Reflect, Clone)]
 pub enum SalvaContextInitialization {
     /// [`SalvaPhysicsPlugin`] will not spawn any entity containing [`SalvaContext`] automatically.
