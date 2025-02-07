@@ -6,7 +6,9 @@ pub use self::plugin::{
 pub use salva_context::*;
 pub use configuration::*;
 
+#[allow(clippy::type_complexity)]
 pub mod systems;
+#[allow(clippy::module_inception)]
 mod plugin;
 mod salva_context;
 mod configuration;

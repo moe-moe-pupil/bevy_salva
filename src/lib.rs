@@ -38,5 +38,6 @@ pub mod math {
 pub mod plugin;
 pub mod fluid;
 #[cfg(feature = "rapier")]
+#[allow(clippy::type_complexity)]
 pub mod rapier_integration;
 pub mod utils;

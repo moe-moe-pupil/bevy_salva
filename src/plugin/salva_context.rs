@@ -1,5 +1,5 @@
 use salva::math::Vector;
-use bevy::prelude::{Component, Entity, Mut, Query, Reflect, Resource, Time, With};
+use bevy::prelude::{Component, Entity, Mut, Query, Reflect, Time, With};
 use salva::LiquidWorld;
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
@@ -7,13 +7,8 @@ use bevy::ecs::query::QueryData;
 use bevy::ecs::system::SystemParam;
 use salva::object::FluidHandle;
 use crate::plugin::{SimulationToRenderTime, configuration::SalvaConfiguration, TimestepMode};
-use salva::coupling::CouplingManager;
-
-#[cfg(feature = "rapier")]
-use salva::integrations::rapier::ColliderCouplingSet;
-#[cfg(feature = "rapier")]
-use bevy_rapier::plugin::RapierContext;
 use crate::math::Real;
+use salva::coupling::CouplingManager;
 
 #[derive(Component)]
 #[require(SalvaConfiguration, SimulationToRenderTime)]
@@ -130,7 +125,7 @@ pub struct ReadDefaultSalvaContext<'w, 's, T: Component = DefaultSalvaContext> {
     salva_context: Query<'w, 's, &'static SalvaContext, With<T>>,
 }
 
-impl<'w, 's, T: Component> ReadDefaultSalvaContext<'w, 's, T> {
+impl<T: Component> ReadDefaultSalvaContext<'_, '_, T> {
     /// Use this method if you only have one [`SalvaContext`].
     ///
     /// SAFETY: This method will panic if its underlying query fails.
@@ -140,7 +135,7 @@ impl<'w, 's, T: Component> ReadDefaultSalvaContext<'w, 's, T> {
     }
 }
 
-impl<'w, 's> Deref for ReadDefaultSalvaContext<'w, 's> {
+impl Deref for ReadDefaultSalvaContext<'_, '_> {
     type Target = SalvaContext;
 
     /// Use this method if you only have one [`SalvaContext`].
@@ -161,7 +156,7 @@ pub struct WriteDefaultSalvaContext<'w, 's, T: Component = DefaultSalvaContext> 
     salva_context: Query<'w, 's, &'static mut SalvaContext, With<T>>,
 }
 
-impl<'w, 's, T: Component> Deref for WriteDefaultSalvaContext<'w, 's, T> {
+impl<T: Component> Deref for WriteDefaultSalvaContext<'_, '_, T> {
     type Target = SalvaContext;
 
     /// Use this method if you only have one [`SalvaContext`].
@@ -173,7 +168,7 @@ impl<'w, 's, T: Component> Deref for WriteDefaultSalvaContext<'w, 's, T> {
     }
 }
 
-impl<'w, 's> DerefMut for WriteDefaultSalvaContext<'w, 's> {
+impl DerefMut for WriteDefaultSalvaContext<'_, '_> {
     /// Use this method if you only have one [`SalvaContext`].
     ///
     /// SAFETY: This method will panic if its underlying query fails.
@@ -195,7 +190,7 @@ pub struct SalvaContextAccess<'w, 's> {
     pub salva_context: Query<'w, 's, &'static SalvaContext>,
 }
 
-impl<'w, 's> SalvaContextAccess<'w, 's> {
+impl SalvaContextAccess<'_, '_> {
     /// Retrieves the salva context responsible for the entity owning the given [`SalvaContextEntityLink`].
     ///
     /// SAFETY: This method will panic if its underlying query fails.
@@ -211,7 +206,7 @@ impl<'w, 's> SalvaContextAccess<'w, 's> {
     }
 }
 
-impl<'w, 's> Deref for SalvaContextAccess<'w, 's> {
+impl Deref for SalvaContextAccess<'_, '_> {
     type Target = SalvaContext;
 
     fn deref(&self) -> &Self::Target {
@@ -233,7 +228,7 @@ pub struct WriteSalvaContext<'w, 's> {
     pub salva_context: Query<'w, 's, &'static mut SalvaContext>,
 }
 
-impl<'w, 's> WriteSalvaContext<'w, 's> {
+impl WriteSalvaContext<'_, '_> {
     /// Retrieves the salva context responsible for the entity owning the given [`SalvaContextEntityLink`].
     ///
     /// SAFETY: This method will panic if its underlying query fails.

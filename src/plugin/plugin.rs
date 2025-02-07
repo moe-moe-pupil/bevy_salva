@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::plugin::{systems, DefaultSalvaContext, SalvaContextEntityLink};
-use bevy::prelude::{warn, Commands, Entity, IntoSystemSetConfigs, Name, PostStartup, PreStartup, Query, Reflect, Res, Resource, Startup, SystemSet, TransformSystem, With, Without, World};
+use bevy::prelude::{warn, Commands, IntoSystemSetConfigs, Name, PreStartup, Reflect, Res, Resource, SystemSet, TransformSystem};
 use bevy::{
     app::{Plugin, PostUpdate},
     ecs::{
@@ -10,10 +10,7 @@ use bevy::{
     },
     prelude::IntoSystemConfigs,
 };
-use salva::{
-    solver::PressureSolver,
-    LiquidWorld,
-};
+use salva::LiquidWorld;
 use crate::math::Real;
 use salva::solver::DFSPHSolver;
 use crate::plugin::salva_context::SalvaContext;
@@ -22,6 +19,8 @@ use crate::plugin::salva_context::SalvaContext;
 use crate::rapier_integration;
 #[cfg(feature = "rapier")]
 use bevy_rapier::plugin::PhysicsSet;
+#[cfg(feature = "rapier")]
+use bevy::app::PostStartup;
 
 pub struct SalvaPhysicsPlugin {
     schedule: Interned<dyn ScheduleLabel>,
@@ -105,6 +104,12 @@ impl SalvaPhysicsPlugin {
                 .chain()
                 .in_set(SalvaSimulationSet::Writeback),
         }
+    }
+}
+
+impl Default for SalvaPhysicsPlugin {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

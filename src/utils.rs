@@ -1,3 +1,4 @@
+#[cfg(feature = "dim3")]
 use crate::math::Vect;
 
 #[cfg(feature = "dim3")]

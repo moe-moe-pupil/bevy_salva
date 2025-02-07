@@ -1,11 +1,9 @@
-use bevy::prelude::{Commands, Component, Entity, Query, Res, ResMut, Time, With, Without};
+use bevy::prelude::{Commands, Component, Entity, Query, Res, Time, With, Without};
 use bevy_rapier::geometry::RapierColliderHandle;
 use bevy_rapier::parry::math::Point;
-use bevy_rapier::plugin::{DefaultRapierContext, RapierConfiguration, ReadDefaultRapierContext, WriteRapierContext};
+use bevy_rapier::plugin::{DefaultRapierContext, RapierConfiguration, WriteRapierContext};
 use bevy_rapier::prelude::{CollisionGroups, RapierContextAccess, RapierContextEntityLink};
-use bitflags::Flags;
 use salva::integrations::rapier::{ColliderCouplingSet, ColliderSampling};
-use salva::math::Vector;
 use salva::object::{Boundary, BoundaryHandle};
 use salva::object::interaction_groups::InteractionGroups;
 use crate::plugin::{DefaultSalvaContext, SalvaConfiguration, SalvaContext, SalvaContextEntityLink, SalvaContextInitialization, SimulationToRenderTime, WriteSalvaContext};
@@ -82,7 +80,7 @@ pub fn step_simulation_rapier_coupling(
         context.step_with_coupling(
             &time,
             &config.gravity.into(),
-            config.timestep_mode.clone(),
+            config.timestep_mode,
             &mut sim_to_render_time,
             &mut link.coupling
                 .as_manager_mut(&rapier_context.colliders, &mut rapier_context.bodies),
@@ -140,7 +138,7 @@ pub fn sample_rapier_colliders(
             .add_boundary(Boundary::new(
                 Vec::new(),
                 collision_groups.map_or_else(
-                    || InteractionGroups::default(),
+                    InteractionGroups::default,
                     |groups| InteractionGroups {
                         memberships: salva::object::interaction_groups::Group::from_bits(groups.memberships.bits())
                             .unwrap(),
@@ -181,7 +179,7 @@ pub fn link_default_contexts(
         (Entity, &mut SalvaConfiguration),
         (With<DefaultSalvaContext>, Without<SalvaRapierCoupling>)
     >,
-    mut default_rapier_context: Query<(Entity, &mut RapierConfiguration), With<DefaultRapierContext>>,
+    default_rapier_context: Query<(Entity, &RapierConfiguration), With<DefaultRapierContext>>,
 ) {
     match initialization_data.as_ref() {
         SalvaContextInitialization::NoAutomaticSalvaContext => {}
@@ -190,8 +188,8 @@ pub fn link_default_contexts(
         } => {
             let (salva_context_entity, mut salva_config) = default_salva_context
                 .get_single_mut().unwrap();
-            let (rapier_context_entity, mut rapier_config) = default_rapier_context
-                .get_single_mut().unwrap();
+            let (rapier_context_entity, rapier_config) = default_rapier_context
+                .single();
             commands.entity(salva_context_entity)
                 .insert(SalvaRapierCoupling {
                     rapier_context_entity,

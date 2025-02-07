@@ -1,13 +1,12 @@
 use crate::fluid::{FluidDensity, FluidInteractionGroups, FluidNonPressureForces, FluidParticlePositions, SalvaFluidHandle};
-use bevy::prelude::{error, warn, Changed, Commands, Entity, Query, RemovedComponents, Res, ResMut, Time, With, Without};
-use salva::math::Vector;
+use bevy::prelude::{error, Changed, Commands, Entity, Query, RemovedComponents, Res, Time, With, Without};
 use salva::object::interaction_groups::InteractionGroups;
 use salva::{math::Point, object::Fluid};
 
 use crate::fluid::{AppendNonPressureForces, RemoveNonPressureForcesAt};
 use crate::math::Vect;
 use crate::plugin::salva_context::SalvaContext;
-use crate::plugin::{DefaultSalvaContext, SalvaConfiguration, SalvaContextAccess, SalvaContextEntityLink, SimulationToRenderTime, WriteDefaultSalvaContext, WriteSalvaContext};
+use crate::plugin::{DefaultSalvaContext, SalvaConfiguration, SalvaContextAccess, SalvaContextEntityLink, SimulationToRenderTime, WriteSalvaContext};
 
 pub fn init_fluids(
     mut commands: Commands,
@@ -74,7 +73,7 @@ pub fn init_fluids(
             context.liquid_world.particle_radius(),
             density,
             fluid_interaction_groups.map_or_else(
-                || InteractionGroups::default(),
+                InteractionGroups::default,
                 |groups| (*groups).into()
             )
         );
@@ -160,7 +159,7 @@ pub fn step_simulation(
         context.step_simulation(
             &time,
             &config.gravity.into(),
-            config.timestep_mode.clone(),
+            config.timestep_mode,
             &mut sim_to_render_time
         );
     }
