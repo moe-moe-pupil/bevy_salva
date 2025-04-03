@@ -1,14 +1,14 @@
+#[allow(unused_imports)]
+use crate::plugin::SalvaPhysicsPlugin;
+use crate::plugin::{DefaultSalvaContext, SalvaConfiguration, SalvaContext, SalvaContextEntityLink, SalvaContextInitialization, SimulationToRenderTime, WriteSalvaContext};
 use bevy::prelude::{Commands, Component, Entity, Query, Res, Time, With, Without};
 use bevy_rapier::geometry::RapierColliderHandle;
 use bevy_rapier::parry::math::Point;
 use bevy_rapier::plugin::{DefaultRapierContext, RapierConfiguration, WriteRapierContext};
-use bevy_rapier::prelude::{CollisionGroups, RapierContextAccess, RapierContextEntityLink};
+use bevy_rapier::prelude::{CollisionGroups, RapierContextEntityLink};
 use salva::integrations::rapier::{ColliderCouplingSet, ColliderSampling};
-use salva::object::{Boundary, BoundaryHandle};
 use salva::object::interaction_groups::InteractionGroups;
-use crate::plugin::{DefaultSalvaContext, SalvaConfiguration, SalvaContext, SalvaContextEntityLink, SalvaContextInitialization, SimulationToRenderTime, WriteSalvaContext};
-#[allow(unused_imports)]
-use crate::plugin::SalvaPhysicsPlugin;
+use salva::object::{Boundary, BoundaryHandle};
 
 pub enum ColliderSamplingMethod {
     /// Collider shape is approximated for the fluid simulation in a way that keeps its shape consistent.
@@ -63,7 +63,7 @@ pub fn step_simulation_rapier_coupling(
         &SalvaConfiguration,
         &mut SimulationToRenderTime
     )>,
-    mut write_rapier_context: WriteRapierContext,
+    mut write_rapier_context: WriteRapierContext<()>,
     time: Res<Time>,
 ) {
     for (
@@ -72,18 +72,22 @@ pub fn step_simulation_rapier_coupling(
         config,
         mut sim_to_render_time
     ) in salva_context_q.iter_mut() {
-        let rapier_context = write_rapier_context
-            .try_context_from_entity(link.rapier_context_entity)
-            .expect("Couldn't find RapierContext coupled to SalvaContext entity {entity}")
-            .into_inner();
+        let (
+            _,
+            mut colliders,
+            _,
+            _,
+            mut rigidbody_set,
+        ) = write_rapier_context.rapier_context
+            .get_mut(link.rapier_context_entity)
+            .expect("Couldn't find RapierContext coupled to SalvaContext entity {entity}");
 
         context.step_with_coupling(
             &time,
             &config.gravity.into(),
             config.timestep_mode,
             &mut sim_to_render_time,
-            &mut link.coupling
-                .as_manager_mut(&rapier_context.colliders, &mut rapier_context.bodies),
+            &mut link.coupling.as_manager_mut(&mut colliders.colliders, &mut rigidbody_set.bodies),
         );
     }
 }
@@ -106,7 +110,7 @@ pub fn sample_rapier_colliders(
     mut rapier_coupling_q: Query<&mut SalvaRapierCoupling>,
     q_default_context: Query<Entity, With<DefaultSalvaContext>>,
     mut context_writer: WriteSalvaContext,
-    rapier_context_access: RapierContextAccess,
+    mut rapier_context_access: WriteRapierContext<()>,
 ) {
     for (
         entity,
@@ -130,8 +134,16 @@ pub fn sample_rapier_colliders(
         let radius = salva_context.liquid_world.particle_radius();
         let coupling = &mut rapier_coupling_q.get_mut(salva_link.0).unwrap().coupling;
 
-        let rapier_context = rapier_context_access.context(rapier_link);
-        let co = rapier_context.colliders.get(co_handle.0).unwrap();
+        let (
+            _,
+            mut colliders,
+            _,
+            _,
+            _,
+        ) = rapier_context_access.rapier_context.get_mut(rapier_link.0)
+            .unwrap();
+        let colliders = &mut colliders.colliders;
+        let co = colliders.get(co_handle.0).unwrap();
 
         let bo_handle = salva_context
             .liquid_world
