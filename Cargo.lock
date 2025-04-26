@@ -3882,6 +3882,7 @@ dependencies = [
  "num-traits",
  "parry2d",
  "rapier2d",
+ "rayon",
 ]
 
 [[package]]

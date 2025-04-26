@@ -22,6 +22,7 @@ rust.unexpected_cfgs = { level = "warn", check-cfg = [
 default = ["dim2"]
 dim2 = []
 rapier = ["bevy_rapier2d", "salva2d/rapier", "salva2d/sampling"]
+parallel = ["salva2d/parallel"]
 
 
 [dependencies]

@@ -22,6 +22,7 @@ rust.unexpected_cfgs = { level = "warn", check-cfg = [
 default = ["dim3"]
 dim3 = []
 rapier = ["bevy_rapier3d", "salva3d/rapier", "salva3d/sampling"]
+parallel = ["salva3d/parallel"]
 
 
 [dependencies]
@@ -34,4 +35,3 @@ bitflags = "2.6.0"
 git = "https://github.com/nsjvidana/salva.git"
 rev = "c2fd202"
 version = "0.9.0"
-features = ["parallel"]
