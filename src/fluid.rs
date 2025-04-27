@@ -1,18 +1,23 @@
-use bevy::prelude::{Component, Reflect};
-use salva::{object::FluidHandle, solver::NonPressureForce};
-use salva::object::interaction_groups::InteractionGroups;
 use crate::math::{Real, Vect};
+use bevy::prelude::{Component, Reflect};
+use salva::object::interaction_groups::InteractionGroups;
+use salva::{object::FluidHandle, solver::NonPressureForce};
+#[cfg(feature = "serialize")]
+use serde::{Deserialize, Serialize};
 
 #[derive(Component)]
 pub struct SalvaFluidHandle(pub FluidHandle);
 
-#[derive(Component)]
+/// Adding this to an entity makes it a fluid entity.
+#[derive(Component, Clone)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct FluidParticlePositions {
     pub positions: Vec<Vect>,
 }
 
 /// The rest density of a fluid (default 1000.0)
-#[derive(Component)]
+#[derive(Component, Copy, Clone)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct FluidDensity {
     pub density0: Real,
 }
@@ -34,6 +39,7 @@ pub struct RemoveNonPressureForcesAt(pub Vec<usize>);
 
 /// A bit mask identifying groups for fluid interactions.
 #[derive(Component, Reflect, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct Group(u32);
 
 bitflags::bitflags! {
@@ -132,6 +138,7 @@ impl Default for Group {
 /// (self.memberships & rhs.filter) != 0 && (rhs.memberships & self.filter) != 0
 /// ```
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Component, Reflect)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
 pub struct FluidInteractionGroups {
     /// Groups memberships.
     pub memberships: Group,
