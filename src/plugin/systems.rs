@@ -6,7 +6,7 @@ use salva::{math::Point, object::Fluid};
 use crate::fluid::{AppendNonPressureForces, RemoveNonPressureForcesAt};
 use crate::math::Vect;
 use crate::plugin::salva_context::SalvaContext;
-use crate::plugin::{DefaultSalvaContext, SalvaConfiguration, SalvaContextAccess, SalvaContextEntityLink, SimulationToRenderTime, WriteSalvaContext};
+use crate::plugin::{DefaultSalvaContext, SalvaConfiguration, SalvaContextAccess, SalvaContextEntityLink, SimulationToRenderTime, TimestepMode, WriteSalvaContext};
 
 pub fn init_fluids(
     mut commands: Commands,
@@ -149,6 +149,7 @@ pub fn sync_removals(
 
 pub fn step_simulation(
     mut salva_context: Query<(&mut SalvaContext, &SalvaConfiguration, &mut SimulationToRenderTime)>,
+    timestep_mode: Res<TimestepMode>,
     time: Res<Time>,
 ) {
     for (mut context, config, mut sim_to_render_time) in salva_context.iter_mut() {
@@ -159,7 +160,7 @@ pub fn step_simulation(
         context.step_simulation(
             &time,
             &config.gravity.into(),
-            config.timestep_mode,
+            timestep_mode.clone(),
             &mut sim_to_render_time
         );
     }

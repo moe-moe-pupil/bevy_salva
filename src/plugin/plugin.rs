@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::plugin::{systems, DefaultSalvaContext, SalvaContextEntityLink};
+use crate::plugin::{systems, DefaultSalvaContext, SalvaContextEntityLink, TimestepMode};
 use bevy::prelude::{warn, Commands, IntoSystemSetConfigs, Name, PreStartup, Reflect, Res, Resource, SystemSet, TransformSystem};
 use bevy::{
     app::{Plugin, PostUpdate},
@@ -119,6 +119,8 @@ impl Plugin for SalvaPhysicsPlugin {
             .register_type::<DefaultSalvaContext>()
             .register_type::<SalvaContextInitialization>()
             .register_type::<SalvaContextEntityLink>();
+        
+        app.init_resource::<TimestepMode>();
 
         let default_world_init = app.world().get_resource::<SalvaContextInitialization>();
         if let Some(world_init) = default_world_init {

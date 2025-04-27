@@ -1,4 +1,4 @@
-use bevy::prelude::Component;
+use bevy::prelude::{Component, Resource};
 use crate::math::Vect;
 
 /// This structure is used when [`TimestepMode::Interpolated`] is
@@ -8,7 +8,7 @@ pub struct SimulationToRenderTime {
     pub diff: f32
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Resource, Copy, Clone, Debug, PartialEq)]
 pub enum TimestepMode {
     /// Use a fixed timestep: the physics simulation will be advanced by the fixed value
     Fixed {
@@ -61,7 +61,6 @@ pub struct SalvaConfiguration {
     /// This is typically set to `false` whenever a [`SalvaContext`] needs to be
     /// coupled to another physics engine of some kind.
     pub default_step_active: bool,
-    pub timestep_mode: TimestepMode,
 }
 
 impl SalvaConfiguration {
@@ -78,7 +77,6 @@ impl Default for SalvaConfiguration {
         Self {
             gravity: Vect::Y * -9.81,
             default_step_active: true,
-            timestep_mode: TimestepMode::default()
         }
     }
 }

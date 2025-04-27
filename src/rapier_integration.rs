@@ -1,6 +1,6 @@
 #[allow(unused_imports)]
 use crate::plugin::SalvaPhysicsPlugin;
-use crate::plugin::{DefaultSalvaContext, SalvaConfiguration, SalvaContext, SalvaContextEntityLink, SalvaContextInitialization, SimulationToRenderTime, WriteSalvaContext};
+use crate::plugin::{DefaultSalvaContext, SalvaConfiguration, SalvaContext, SalvaContextEntityLink, SalvaContextInitialization, SimulationToRenderTime, TimestepMode, WriteSalvaContext};
 use bevy::prelude::{Commands, Component, Entity, Query, Res, Time, With, Without};
 use bevy_rapier::geometry::RapierColliderHandle;
 use bevy_rapier::parry::math::Point;
@@ -63,6 +63,7 @@ pub fn step_simulation_rapier_coupling(
         &SalvaConfiguration,
         &mut SimulationToRenderTime
     )>,
+    timestep_mode: Res<TimestepMode>,
     mut write_rapier_context: WriteRapierContext<()>,
     time: Res<Time>,
 ) {
@@ -85,7 +86,7 @@ pub fn step_simulation_rapier_coupling(
         context.step_with_coupling(
             &time,
             &config.gravity.into(),
-            config.timestep_mode,
+            timestep_mode.clone(),
             &mut sim_to_render_time,
             &mut link.coupling.as_manager_mut(&mut colliders.colliders, &mut rigidbody_set.bodies),
         );
