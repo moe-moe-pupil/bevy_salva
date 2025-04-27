@@ -10,6 +10,8 @@ use salva::integrations::rapier::{ColliderCouplingSet, ColliderSampling};
 use salva::object::interaction_groups::InteractionGroups;
 use salva::object::{Boundary, BoundaryHandle};
 
+/// How a Rapier collider should be sampled for interaction with a Salva physics
+/// world.
 pub enum ColliderSamplingMethod {
     /// Collider shape is approximated for the fluid simulation in a way that keeps its shape consistent.
     /// The shape is determined using [`salva3d::sampling::shape_surface_ray_sample`]
@@ -18,7 +20,7 @@ pub enum ColliderSamplingMethod {
     Static,
     /// Collider shape is approximated on-the-fly as fluid particles make contact with it.
     ///
-    /// Performance is more consistent for shapes of any size at the cost of less detail.
+    /// Performance is more consistent for shapes of any size at the cost of accuracy.
     DynamicContact,
     /// Custom collider shape approximated with the given sample points in local-space.
     ///
@@ -34,6 +36,8 @@ impl Default for ColliderSamplingMethod {
     }
 }
 
+/// Add this to an entity with a [`Collider`](bevy_rapier::prelude::Collider)
+/// to let it interact with a Salva physics world.
 #[derive(Component, Default)]
 pub struct RapierColliderSampling {
     pub sampling_method: ColliderSamplingMethod,
@@ -65,6 +69,7 @@ pub fn step_simulation_rapier_coupling(
     )>,
     timestep_mode: Res<TimestepMode>,
     mut write_rapier_context: WriteRapierContext<()>,
+    rapier_configs: Query<&RapierConfiguration>,
     time: Res<Time>,
 ) {
     for (
@@ -73,6 +78,10 @@ pub fn step_simulation_rapier_coupling(
         config,
         mut sim_to_render_time
     ) in salva_context_q.iter_mut() {
+        // Skip if this SalvaContext runs independently
+        if config.physics_pipeline_active.is_some() {
+            continue;
+        }
         let (
             _,
             mut colliders,
@@ -83,13 +92,17 @@ pub fn step_simulation_rapier_coupling(
             .get_mut(link.rapier_context_entity)
             .expect("Couldn't find RapierContext coupled to SalvaContext entity {entity}");
 
-        context.step_with_coupling(
-            &time,
-            &config.gravity.into(),
-            timestep_mode.clone(),
-            &mut sim_to_render_time,
-            &mut link.coupling.as_manager_mut(&mut colliders.colliders, &mut rigidbody_set.bodies),
-        );
+        let rapier_config = rapier_configs.get(link.rapier_context_entity)
+            .expect("RapierContext entity doesn't have a RapierConfiguration!");
+        if rapier_config.physics_pipeline_active {
+            context.step_with_coupling(
+                &time,
+                &config.gravity.into(),
+                timestep_mode.clone(),
+                &mut sim_to_render_time,
+                &mut link.coupling.as_manager_mut(&mut colliders.colliders, &mut rigidbody_set.bodies),
+            );
+        }
     }
 }
 

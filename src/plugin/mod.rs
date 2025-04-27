@@ -1,10 +1,10 @@
+pub use self::plugin::{
+    SalvaContextInitialization, SalvaPhysicsPlugin, SalvaSimulationSet
+};
 pub use crate::fluid::AppendNonPressureForces;
 pub use crate::fluid::RemoveNonPressureForcesAt;
-pub use self::plugin::{
-    SalvaPhysicsPlugin, SalvaSimulationSet, SalvaContextInitialization
-};
-pub use salva_context::*;
 pub use configuration::*;
+pub use salva_context::*;
 
 #[allow(clippy::type_complexity)]
 pub mod systems;

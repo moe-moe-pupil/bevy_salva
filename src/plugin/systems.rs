@@ -147,22 +147,24 @@ pub fn sync_removals(
     }
 }
 
+/// The system that steps [`SalvaContext`]s that run independently.
+/// See `SalvaConfiguration.physics_pipeline_active` for more details.
 pub fn step_simulation(
     mut salva_context: Query<(&mut SalvaContext, &SalvaConfiguration, &mut SimulationToRenderTime)>,
     timestep_mode: Res<TimestepMode>,
     time: Res<Time>,
 ) {
     for (mut context, config, mut sim_to_render_time) in salva_context.iter_mut() {
-        if !config.default_step_active {
-            continue;
+        // If this context runs independently and its physics pipeline is active,
+        // step its simulation.
+        if config.physics_pipeline_active.is_some_and(|active| active) {
+            context.step_simulation(
+                &time,
+                &config.gravity.into(),
+                timestep_mode.clone(),
+                &mut sim_to_render_time
+            );
         }
-
-        context.step_simulation(
-            &time,
-            &config.gravity.into(),
-            timestep_mode.clone(),
-            &mut sim_to_render_time
-        );
     }
 }
 

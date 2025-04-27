@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use crate::plugin::{systems, DefaultSalvaContext, SalvaContextEntityLink, TimestepMode};
+use crate::math::Real;
+use crate::plugin::salva_context::SalvaContext;
+use crate::plugin::{systems, DefaultSalvaContext, SalvaConfiguration, SalvaContextEntityLink, TimestepMode};
 use bevy::prelude::{warn, Commands, IntoSystemSetConfigs, Name, PreStartup, Reflect, Res, Resource, SystemSet, TransformSystem};
 use bevy::{
     app::{Plugin, PostUpdate},
@@ -10,17 +12,17 @@ use bevy::{
     },
     prelude::IntoSystemConfigs,
 };
-use salva::LiquidWorld;
-use crate::math::Real;
 use salva::solver::DFSPHSolver;
-use crate::plugin::salva_context::SalvaContext;
+use salva::LiquidWorld;
 
 #[cfg(feature = "rapier")]
 use crate::rapier_integration;
 #[cfg(feature = "rapier")]
+use bevy::app::PostStartup;
+#[cfg(feature = "rapier")]
 use bevy_rapier::plugin::PhysicsSet;
 #[cfg(feature = "rapier")]
-use bevy::app::PostStartup;
+use bevy_rapier::prelude::RapierPhysicsPlugin;
 
 pub struct SalvaPhysicsPlugin {
     schedule: Interned<dyn ScheduleLabel>,
@@ -159,17 +161,23 @@ impl Plugin for SalvaPhysicsPlugin {
             );
 
             #[cfg(feature = "rapier")]
-            app.configure_sets(
-                self.schedule,
-                (
-                    SalvaSimulationSet::SyncBackend,
-                    SalvaSimulationSet::StepSimulation,
-                    SalvaSimulationSet::Writeback,
-                )
-                    .chain()
-                    .before(TransformSystem::TransformPropagate)
-                    .after(PhysicsSet::Writeback),
-            );
+            {
+                // Ensure that rapier physics is added.
+                if !app.is_plugin_added::<RapierPhysicsPlugin<()>>() {
+                    app.add_plugins(RapierPhysicsPlugin::<()>::default());
+                }
+                app.configure_sets(
+                    self.schedule,
+                    (
+                        SalvaSimulationSet::SyncBackend,
+                        SalvaSimulationSet::StepSimulation,
+                        SalvaSimulationSet::Writeback,
+                    )
+                        .chain()
+                        .before(TransformSystem::TransformPropagate)
+                        .after(PhysicsSet::Writeback),
+                );
+            }
 
             app.add_systems(
                 self.schedule,
@@ -240,6 +248,11 @@ pub fn insert_default_world(
                 SalvaContext {
                     liquid_world: LiquidWorld::new(solver, *particle_radius, *smoothing_factor),
                     entity2fluid: HashMap::default(),
+                },
+                #[cfg(feature = "rapier")]
+                SalvaConfiguration {
+                    physics_pipeline_active: None,
+                    ..Default::default()
                 },
                 DefaultSalvaContext,
             ));

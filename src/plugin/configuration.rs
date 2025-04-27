@@ -1,5 +1,5 @@
-use bevy::prelude::{Component, Resource};
 use crate::math::Vect;
+use bevy::prelude::{Component, Resource};
 
 /// This structure is used when [`TimestepMode::Interpolated`] is
 /// enabled for a [`SalvaContext`] entity.
@@ -55,12 +55,12 @@ impl Default for TimestepMode {
 pub struct SalvaConfiguration {
     /// Specifies the gravity of the physics simulation.
     pub gravity: Vect,
-    /// If this is `false`, the simulation won't step, and another system would have to be set up
-    /// for stepping the [`LiquidWorld`] that this [`SalvaContext`] entity has.
+    /// If this is `false`, the simulation won't step.
     ///
-    /// This is typically set to `false` whenever a [`SalvaContext`] needs to be
-    /// coupled to another physics engine of some kind.
-    pub default_step_active: bool,
+    /// This is typically set to [`None`] when Salva is being coupled with another engine, in
+    /// the case that other engine's configuration would be used for determining whether Salva
+    /// steps or not.
+    pub physics_pipeline_active: Option<bool>,
 }
 
 impl SalvaConfiguration {
@@ -76,7 +76,7 @@ impl Default for SalvaConfiguration {
     fn default() -> Self {
         Self {
             gravity: Vect::Y * -9.81,
-            default_step_active: true,
+            physics_pipeline_active: Some(true),
         }
     }
 }

@@ -25,7 +25,6 @@ rapier = ["bevy_rapier2d", "salva2d/rapier", "salva2d/sampling"]
 parallel = ["salva2d/parallel"]
 serialize = ["bevy/serialize"]
 
-
 [dependencies]
 nalgebra = { version = "0.33.2", features = ["convert-glam029"] }
 bevy = "0.15.3"

@@ -1,14 +1,14 @@
-use salva::math::Vector;
+use crate::math::Real;
+use crate::plugin::{configuration::SalvaConfiguration, SimulationToRenderTime, TimestepMode};
+use bevy::ecs::query::QueryData;
+use bevy::ecs::system::SystemParam;
 use bevy::prelude::{Component, Entity, Mut, Query, Reflect, Time, With};
+use salva::coupling::CouplingManager;
+use salva::math::Vector;
+use salva::object::FluidHandle;
 use salva::LiquidWorld;
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
-use bevy::ecs::query::QueryData;
-use bevy::ecs::system::SystemParam;
-use salva::object::FluidHandle;
-use crate::plugin::{SimulationToRenderTime, configuration::SalvaConfiguration, TimestepMode};
-use crate::math::Real;
-use salva::coupling::CouplingManager;
 
 #[derive(Component)]
 #[require(SalvaConfiguration, SimulationToRenderTime)]

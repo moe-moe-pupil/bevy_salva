@@ -1,13 +1,12 @@
+#[cfg(all(feature = "dim2", feature = "rapier"))]
+pub extern crate bevy_rapier2d as bevy_rapier;
+#[cfg(all(feature = "dim3", feature = "rapier"))]
+pub extern crate bevy_rapier3d as bevy_rapier;
 pub extern crate nalgebra as na;
 #[cfg(feature = "dim2")]
 pub extern crate salva2d as salva;
 #[cfg(feature = "dim3")]
 pub extern crate salva3d as salva;
-
-#[cfg(all(feature = "dim2", feature = "rapier"))]
-pub extern crate bevy_rapier2d as bevy_rapier;
-#[cfg(all(feature = "dim3", feature = "rapier"))]
-pub extern crate bevy_rapier3d as bevy_rapier;
 
 /// Math type aliases that select the right vector/rotation types based
 /// on the dimension used by Salva.
