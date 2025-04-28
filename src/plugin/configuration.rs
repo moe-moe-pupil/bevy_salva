@@ -70,6 +70,14 @@ impl SalvaConfiguration {
             ..Default::default()
         }
     }
+
+    pub fn is_independent(&self) -> bool {
+        self.physics_pipeline_active.is_some()
+    }
+
+    pub fn physics_is_independently_active(&self) -> bool {
+        self.physics_pipeline_active.is_some_and(|active| active)
+    }
 }
 
 impl Default for SalvaConfiguration {

@@ -83,7 +83,7 @@ impl SalvaPhysicsPlugin {
                     .after(PhysicsSet::StepSimulation)
             }
             SalvaSimulationSet::Writeback => {
-                (systems::writeback_particle_positions,)
+                (systems::writeback_particle_kinematics,)
                     .chain()
                     .in_set(SalvaSimulationSet::Writeback)
                     .after(PhysicsSet::Writeback)
@@ -102,7 +102,7 @@ impl SalvaPhysicsPlugin {
             SalvaSimulationSet::StepSimulation => {
                 (systems::step_simulation).in_set(SalvaSimulationSet::StepSimulation)
             }
-            SalvaSimulationSet::Writeback => (systems::writeback_particle_positions,)
+            SalvaSimulationSet::Writeback => (systems::writeback_particle_kinematics,)
                 .chain()
                 .in_set(SalvaSimulationSet::Writeback),
         }

@@ -1,3 +1,4 @@
+use std::ops::{Deref, DerefMut};
 use crate::math::{Real, Vect};
 use bevy::prelude::{Component, Reflect};
 use salva::object::interaction_groups::InteractionGroups;
@@ -9,10 +10,44 @@ use serde::{Deserialize, Serialize};
 pub struct SalvaFluidHandle(pub FluidHandle);
 
 /// Adding this to an entity makes it a fluid entity.
-#[derive(Component, Clone)]
+#[derive(Component, Default, Clone)]
+#[require(FluidVelocities, FluidAccelerations)]
 #[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
-pub struct FluidParticlePositions {
-    pub positions: Vec<Vect>,
+pub struct FluidPositions(pub Vec<Vect>);
+
+impl Deref for FluidPositions {
+    type Target = Vec<Vect>;
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
+
+impl DerefMut for FluidPositions {
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 }
+}
+
+#[derive(Component, Default, Clone)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
+pub struct FluidVelocities(pub Vec<Vect>);
+
+impl Deref for FluidVelocities {
+    type Target = Vec<Vect>;
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
+
+impl DerefMut for FluidVelocities {
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 }
+}
+
+#[derive(Component, Default, Clone)]
+#[cfg_attr(feature = "serialize", derive(Serialize, Deserialize))]
+pub struct FluidAccelerations(pub Vec<Vect>);
+
+impl Deref for FluidAccelerations {
+    type Target = Vec<Vect>;
+    fn deref(&self) -> &Self::Target { &self.0 }
+}
+
+impl DerefMut for FluidAccelerations {
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 }
 }
 
 /// The rest density of a fluid (default 1000.0)
