@@ -38,9 +38,29 @@ impl Default for ColliderSamplingMethod {
 
 /// Add this to an entity with a [`Collider`](bevy_rapier::prelude::Collider)
 /// to let it interact with a Salva physics world.
-#[derive(Component, Default)]
-pub struct RapierColliderSampling {
-    pub sampling_method: ColliderSamplingMethod,
+#[derive(Component, Clone)]
+pub enum RapierColliderSampling {
+    /// Collider shape is approximated for the fluid simulation in a way that keeps its shape consistent.
+    /// The shape is determined using [`salva3d::sampling::shape_surface_ray_sample`]
+    ///
+    /// Good for smaller objects with finer details. Larger objects cause performance issues.
+    Static,
+    /// Collider shape is approximated on-the-fly as fluid particles make contact with it.
+    ///
+    /// Performance is more consistent for shapes of any size at the cost of accuracy.
+    DynamicContact,
+    /// Custom collider shape approximated with the given sample points in local-space.
+    ///
+    /// It is recommended that the points are separated by a distance smaller or equal to twice
+    /// the particle radius used to initialize the fluid simulation world.
+    /// The default particle radius is [`SalvaPhysicsPlugin::DEFAULT_PARTICLE_RADIUS`].
+    CustomStatic(Vec<Point<f32>>),
+}
+
+impl Default for RapierColliderSampling {
+    fn default() -> Self {
+        Self::DynamicContact
+    }
 }
 
 #[derive(Component)]
@@ -176,16 +196,16 @@ pub fn sample_rapier_colliders(
         coupling.register_coupling(
             bo_handle,
             co_handle.0,
-            match &sampling.sampling_method {
-                ColliderSamplingMethod::Static => {
+            match &sampling {
+                RapierColliderSampling::Static => {
                     let samples =
                         salva::sampling::shape_surface_ray_sample(co.shape(), radius).unwrap();
                     ColliderSampling::StaticSampling(samples)
                 }
-                ColliderSamplingMethod::DynamicContact => {
+                RapierColliderSampling::DynamicContact => {
                     ColliderSampling::DynamicContactSampling
                 }
-                ColliderSamplingMethod::CustomStatic(samples) => {
+                RapierColliderSampling::CustomStatic(samples) => {
                     ColliderSampling::StaticSampling(samples.clone())
                 }
             },

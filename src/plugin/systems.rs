@@ -134,7 +134,7 @@ pub fn apply_fluid_user_changes(
     for (handle, link, positions) in changed_positions.iter() {
         let mut context = context_writer.context(link);
         let radius = context.liquid_world.particle_radius();
-        let mut fluid = context.liquid_world
+        let fluid = context.liquid_world
             .fluids_mut()
             .get_mut(handle.0)
             .unwrap();
