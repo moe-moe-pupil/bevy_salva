@@ -1,3 +1,4 @@
+use salva::math::Real;
 #[cfg(feature = "dim3")]
 use crate::math::Vect;
 
@@ -19,3 +20,16 @@ pub fn cube_particle_positions(ni: usize, nj: usize, nk: usize, particle_rad: f3
 
     points
 }
+
+pub fn particle_volume(particle_radius: Real) -> Real {
+    // The volume of a fluid is computed as the volume of a cuboid of half-width equal to particle_radius.
+    // It is multiplied by 0.8 so that there is no pressure when the cuboids are aligned on a grid.
+    // This mass computation method is inspired from the SplishSplash project.
+    #[cfg(feature = "dim2")]
+    let particle_volume = particle_radius * particle_radius * na::convert::<_, Real>(4.0 * 0.8);
+    #[cfg(feature = "dim3")]
+    let particle_volume =
+        particle_radius * particle_radius * particle_radius * na::convert::<_, Real>(8.0 * 0.8);
+    particle_volume
+}
+

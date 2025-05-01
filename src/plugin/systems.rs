@@ -9,6 +9,7 @@ use crate::math::Vect;
 use crate::plugin::salva_context::SalvaContext;
 use crate::plugin::{DefaultSalvaContext, SalvaConfiguration, SalvaContextAccess, SalvaContextEntityLink, SimulationToRenderTime, TimestepMode, WriteSalvaContext};
 use crate::rapier_integration::SalvaRapierCoupling;
+use crate::utils;
 
 pub fn init_fluids(
     mut commands: Commands,
@@ -132,15 +133,30 @@ pub fn apply_fluid_user_changes(
 
     for (handle, link, positions) in changed_positions.iter() {
         let mut context = context_writer.context(link);
-        context.liquid_world
+        let radius = context.liquid_world.particle_radius();
+        let mut fluid = context.liquid_world
             .fluids_mut()
             .get_mut(handle.0)
-            .unwrap()
-            .positions = positions
+            .unwrap();
+        // Set positions
+        fluid.positions = positions
                 .iter()
                 .copied()
                 .map(|v|  Point::from(v))
                 .collect();
+        // Reset velocities & accelerations
+        // TODO: allow deleting individual particles without having to wipe all kinematic data
+        fluid.velocities = std::iter::repeat(Vector::zeros())
+            .take(positions.len())
+            .collect();
+        fluid.accelerations = std::iter::repeat(Vector::zeros())
+            .take(positions.len())
+            .collect();
+        // Set volumes
+        let volume = utils::particle_volume(radius);
+        fluid.volumes = std::iter::repeat(volume)
+            .take(positions.len())
+            .collect();
     }
 
     for (handle, link, positions, vels) in changed_velocities.iter() {
@@ -154,9 +170,8 @@ pub fn apply_fluid_user_changes(
                     .collect()
             }
             else {
-                positions
-                    .iter()
-                    .map(|_| Vector::zeros())
+                std::iter::repeat(Vector::zeros())
+                    .take(positions.len())
                     .collect()
             };
         context.liquid_world
@@ -177,9 +192,8 @@ pub fn apply_fluid_user_changes(
                     .collect()
             }
             else {
-                positions
-                    .iter()
-                    .map(|_| Vector::zeros())
+                std::iter::repeat(Vector::zeros())
+                    .take(positions.len())
                     .collect()
             };
         context.liquid_world
