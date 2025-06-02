@@ -1,6 +1,9 @@
 #[allow(unused_imports)]
 use crate::plugin::SalvaPhysicsPlugin;
-use crate::plugin::{DefaultSalvaContext, SalvaConfiguration, SalvaContext, SalvaContextEntityLink, SalvaContextInitialization, SimulationToRenderTime, TimestepMode, WriteSalvaContext};
+use crate::plugin::{
+    DefaultSalvaContext, SalvaConfiguration, SalvaContext, SalvaContextEntityLink,
+    SalvaContextInitialization, SimulationToRenderTime, TimestepMode, WriteSalvaContext,
+};
 use bevy::prelude::{Commands, Component, Entity, Query, Res, Time, With, Without};
 use bevy_rapier::geometry::RapierColliderHandle;
 use bevy_rapier::parry::math::Point;
@@ -85,34 +88,25 @@ pub fn step_simulation_rapier_coupling(
         &mut SalvaContext,
         &mut SalvaRapierCoupling,
         &SalvaConfiguration,
-        &mut SimulationToRenderTime
+        &mut SimulationToRenderTime,
     )>,
     timestep_mode: Res<TimestepMode>,
     mut write_rapier_context: WriteRapierContext<()>,
     rapier_configs: Query<&RapierConfiguration>,
     time: Res<Time>,
 ) {
-    for (
-        mut context,
-        mut link,
-        config,
-        mut sim_to_render_time
-    ) in salva_context_q.iter_mut() {
+    for (mut context, mut link, config, mut sim_to_render_time) in salva_context_q.iter_mut() {
         // Skip if this SalvaContext runs independently
         if config.physics_pipeline_active.is_some() {
             continue;
         }
-        let (
-            _,
-            mut colliders,
-            _,
-            _,
-            mut rigidbody_set,
-        ) = write_rapier_context.rapier_context
+        let (_, mut colliders, _, _, mut rigidbody_set) = write_rapier_context
+            .rapier_context
             .get_mut(link.rapier_context_entity)
             .expect("Couldn't find RapierContext coupled to SalvaContext entity {entity}");
 
-        let rapier_config = rapier_configs.get(link.rapier_context_entity)
+        let rapier_config = rapier_configs
+            .get(link.rapier_context_entity)
             .expect("RapierContext entity doesn't have a RapierConfiguration!");
         if rapier_config.physics_pipeline_active {
             context.step_with_coupling(
@@ -120,7 +114,9 @@ pub fn step_simulation_rapier_coupling(
                 &config.gravity.into(),
                 timestep_mode.clone(),
                 &mut sim_to_render_time,
-                &mut link.coupling.as_manager_mut(&mut colliders.colliders, &mut rigidbody_set.bodies),
+                &mut link
+                    .coupling
+                    .as_manager_mut(&mut colliders.colliders, &mut rigidbody_set.bodies),
             );
         }
     }
@@ -146,53 +142,40 @@ pub fn sample_rapier_colliders(
     mut context_writer: WriteSalvaContext,
     mut rapier_context_access: WriteRapierContext<()>,
 ) {
-    for (
-        entity,
-        rapier_link,
-        salva_link,
-        co_handle,
-        sampling,
-        collision_groups,
-    ) in colliders.iter() {
+    for (entity, rapier_link, salva_link, co_handle, sampling, collision_groups) in colliders.iter()
+    {
         let mut entity_cmd = commands.entity(entity);
         let salva_link = salva_link.map_or_else(
             || {
-                let context_entity = q_default_context.get_single().unwrap();
+                let context_entity = q_default_context.single().unwrap();
                 entity_cmd.insert(SalvaContextEntityLink(context_entity));
                 SalvaContextEntityLink(context_entity)
             },
-            |link| *link
+            |link| *link,
         );
 
         let mut salva_context = context_writer.context(&salva_link);
         let radius = salva_context.liquid_world.particle_radius();
         let coupling = &mut rapier_coupling_q.get_mut(salva_link.0).unwrap().coupling;
 
-        let (
-            _,
-            mut colliders,
-            _,
-            _,
-            _,
-        ) = rapier_context_access.rapier_context.get_mut(rapier_link.0)
+        let (_, mut colliders, _, _, _) = rapier_context_access
+            .rapier_context
+            .get_mut(rapier_link.0)
             .unwrap();
         let colliders = &mut colliders.colliders;
         let co = colliders.get(co_handle.0).unwrap();
 
-        let bo_handle = salva_context
-            .liquid_world
-            .add_boundary(Boundary::new(
-                Vec::new(),
-                collision_groups.map_or_else(
-                    InteractionGroups::default,
-                    |groups| InteractionGroups {
-                        memberships: salva::object::interaction_groups::Group::from_bits(groups.memberships.bits())
-                            .unwrap(),
-                        filter: salva::object::interaction_groups::Group::from_bits(groups.filters.bits())
-                            .unwrap(),
-                    }
+        let bo_handle = salva_context.liquid_world.add_boundary(Boundary::new(
+            Vec::new(),
+            collision_groups.map_or_else(InteractionGroups::default, |groups| InteractionGroups {
+                memberships: salva::object::interaction_groups::Group::from_bits(
+                    groups.memberships.bits(),
                 )
-            ));
+                .unwrap(),
+                filter: salva::object::interaction_groups::Group::from_bits(groups.filters.bits())
+                    .unwrap(),
+            }),
+        ));
         coupling.register_coupling(
             bo_handle,
             co_handle.0,
@@ -202,17 +185,14 @@ pub fn sample_rapier_colliders(
                         salva::sampling::shape_surface_ray_sample(co.shape(), radius).unwrap();
                     ColliderSampling::StaticSampling(samples)
                 }
-                RapierColliderSampling::DynamicContact => {
-                    ColliderSampling::DynamicContactSampling
-                }
+                RapierColliderSampling::DynamicContact => ColliderSampling::DynamicContactSampling,
                 RapierColliderSampling::CustomStatic(samples) => {
                     ColliderSampling::StaticSampling(samples.clone())
                 }
             },
         );
 
-        entity_cmd
-            .insert(ColliderBoundaryHandle(bo_handle));
+        entity_cmd.insert(ColliderBoundaryHandle(bo_handle));
     }
 }
 
@@ -223,25 +203,28 @@ pub fn link_default_contexts(
     initialization_data: Res<SalvaContextInitialization>,
     mut default_salva_context: Query<
         (Entity, &mut SalvaConfiguration),
-        (With<DefaultSalvaContext>, Without<SalvaRapierCoupling>)
+        (With<DefaultSalvaContext>, Without<SalvaRapierCoupling>),
     >,
     default_rapier_context: Query<(Entity, &RapierConfiguration), With<DefaultRapierContext>>,
 ) {
     match initialization_data.as_ref() {
         SalvaContextInitialization::NoAutomaticSalvaContext => {}
         SalvaContextInitialization::InitializeDefaultSalvaContext {
-            particle_radius: _particle_radius, smoothing_factor: _smoothing_factor
+            particle_radius: _particle_radius,
+            smoothing_factor: _smoothing_factor,
         } => {
-            let (salva_context_entity, mut salva_config) = default_salva_context
-                .get_single_mut().unwrap();
-            let (rapier_context_entity, rapier_config) = default_rapier_context
-                .single();
-            commands.entity(salva_context_entity)
-                .insert(SalvaRapierCoupling {
-                    rapier_context_entity,
-                    coupling: ColliderCouplingSet::new(),
-                });
-            salva_config.gravity = rapier_config.gravity;
+            if let Ok((salva_context_entity, mut salva_config)) = default_salva_context.single_mut() {
+                if let Ok((rapier_context_entity, rapier_config)) = default_rapier_context.single()
+                {
+                    commands
+                        .entity(salva_context_entity)
+                        .insert(SalvaRapierCoupling {
+                            rapier_context_entity,
+                            coupling: ColliderCouplingSet::new(),
+                        });
+                    salva_config.gravity = rapier_config.gravity;
+                }
+            }
         }
     }
 }

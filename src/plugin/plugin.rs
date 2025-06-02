@@ -2,15 +2,18 @@ use std::collections::HashMap;
 
 use crate::math::Real;
 use crate::plugin::salva_context::SalvaContext;
-use crate::plugin::{systems, DefaultSalvaContext, SalvaConfiguration, SalvaContextEntityLink, TimestepMode};
-use bevy::prelude::{warn, Commands, IntoSystemSetConfigs, Name, PreStartup, Reflect, Res, Resource, SystemSet, TransformSystem};
+use crate::plugin::{systems, DefaultSalvaContext, SalvaContextEntityLink, TimestepMode};
+#[cfg(feature = "rapier")]
+use bevy::ecs::schedule::IntoScheduleConfigs;
+use bevy::ecs::schedule::ScheduleConfigs;
+use bevy::ecs::system::ScheduleSystem;
+use bevy::prelude::*;
 use bevy::{
     app::{Plugin, PostUpdate},
     ecs::{
         intern::Interned,
-        schedule::{ScheduleLabel, SystemConfigs},
+        schedule::{ScheduleLabel},
     },
-    prelude::IntoSystemConfigs,
 };
 use salva::solver::DFSPHSolver;
 use salva::LiquidWorld;
@@ -23,6 +26,8 @@ use bevy::app::PostStartup;
 use bevy_rapier::plugin::PhysicsSet;
 #[cfg(feature = "rapier")]
 use bevy_rapier::prelude::RapierPhysicsPlugin;
+
+use super::SalvaConfiguration;
 
 pub struct SalvaPhysicsPlugin {
     schedule: Interned<dyn ScheduleLabel>,
@@ -60,7 +65,7 @@ impl SalvaPhysicsPlugin {
         self
     }
 
-    pub fn get_systems(set: SalvaSimulationSet) -> SystemConfigs {
+    pub fn get_systems(set: SalvaSimulationSet) ->  ScheduleConfigs<ScheduleSystem> {
         #[cfg(feature = "rapier")]
         match set {
             SalvaSimulationSet::SyncBackend => {
@@ -248,7 +253,7 @@ pub fn insert_default_world(
                 SalvaContext {
                     liquid_world: LiquidWorld::new(solver, *particle_radius, *smoothing_factor),
                     entity2fluid: HashMap::default(),
-                },
+                },            
                 #[cfg(feature = "rapier")]
                 SalvaConfiguration {
                     physics_pipeline_active: None,

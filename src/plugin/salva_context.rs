@@ -24,26 +24,33 @@ impl SalvaContext {
         gravity: &Vector<f32>,
         timestep_mode: TimestepMode,
         sim_to_render_time: &mut SimulationToRenderTime,
-        coupling: &mut impl CouplingManager
+        coupling: &mut impl CouplingManager,
     ) {
         match timestep_mode {
-            TimestepMode::Fixed {dt, substeps} => {
-                let dt = dt/substeps as Real;
+            TimestepMode::Fixed { dt, substeps } => {
+                let dt = dt / substeps as Real;
                 for _ in 0..substeps {
                     self.liquid_world.step_with_coupling(dt, gravity, coupling);
                 }
-            },
-            TimestepMode::Variable {max_dt, time_scale, substeps} => {
+            }
+            TimestepMode::Variable {
+                max_dt,
+                time_scale,
+                substeps,
+            } => {
                 let dt = (time.delta_secs() * time_scale).min(max_dt) / substeps as Real;
                 for _ in 0..substeps {
                     self.liquid_world.step_with_coupling(dt, gravity, coupling);
                 }
-            },
-            TimestepMode::Interpolated {dt, time_scale, substeps} => {
+            }
+            TimestepMode::Interpolated {
+                dt,
+                time_scale,
+                substeps,
+            } => {
                 sim_to_render_time.diff += time.delta_secs();
 
                 while sim_to_render_time.diff > 0. {
-
                     let dt = (dt / substeps as Real) * time_scale;
                     for _ in 0..substeps {
                         self.liquid_world.step_with_coupling(dt, gravity, coupling);
@@ -60,26 +67,33 @@ impl SalvaContext {
         time: &Time,
         gravity: &Vector<f32>,
         timestep_mode: TimestepMode,
-        sim_to_render_time: &mut SimulationToRenderTime
+        sim_to_render_time: &mut SimulationToRenderTime,
     ) {
         match timestep_mode {
-            TimestepMode::Fixed {dt, substeps} => {
-                let dt = dt/substeps as Real;
+            TimestepMode::Fixed { dt, substeps } => {
+                let dt = dt / substeps as Real;
                 for _ in 0..substeps {
                     self.liquid_world.step(dt, gravity);
                 }
-            },
-            TimestepMode::Variable {max_dt, time_scale, substeps} => {
+            }
+            TimestepMode::Variable {
+                max_dt,
+                time_scale,
+                substeps,
+            } => {
                 let dt = (time.delta_secs() * time_scale).min(max_dt) / substeps as Real;
                 for _ in 0..substeps {
                     self.liquid_world.step(dt, gravity);
                 }
-            },
-            TimestepMode::Interpolated {dt, time_scale, substeps} => {
+            }
+            TimestepMode::Interpolated {
+                dt,
+                time_scale,
+                substeps,
+            } => {
                 sim_to_render_time.diff += time.delta_secs();
 
                 while sim_to_render_time.diff > 0. {
-
                     let dt = (dt / substeps as Real) * time_scale;
                     for _ in 0..substeps {
                         self.liquid_world.step(dt, gravity);
@@ -103,7 +117,7 @@ pub struct SalvaContextEntityLink(pub Entity);
 #[derive(QueryData)]
 pub struct SalvaEntity {
     pub entity: Entity,
-    pub salva_context_link: &'static SalvaContextEntityLink
+    pub salva_context_link: &'static SalvaContextEntityLink,
 }
 
 /// Marker component for to access the default [`SalvaContext`].
@@ -131,7 +145,7 @@ impl<T: Component> ReadDefaultSalvaContext<'_, '_, T> {
     /// SAFETY: This method will panic if its underlying query fails.
     /// See [`SalvaContextAccess`] for a safe alternative.
     pub fn single(&'_ self) -> &SalvaContext {
-        self.salva_context.single()
+        self.salva_context.single().unwrap()
     }
 }
 
@@ -143,7 +157,7 @@ impl Deref for ReadDefaultSalvaContext<'_, '_> {
     /// SAFETY: This method will panic if its underlying query fails.
     /// See [`SalvaContextAccess`] for a safe alternative.
     fn deref(&self) -> &Self::Target {
-        self.salva_context.single()
+        self.salva_context.single().unwrap()
     }
 }
 
@@ -164,7 +178,7 @@ impl<T: Component> Deref for WriteDefaultSalvaContext<'_, '_, T> {
     /// SAFETY: This method will panic if its underlying query fails.
     /// See [`SalvaContextAccess`] for a safe alternative.
     fn deref(&self) -> &Self::Target {
-        self.salva_context.single()
+        self.salva_context.single().unwrap()
     }
 }
 
@@ -175,7 +189,7 @@ impl DerefMut for WriteDefaultSalvaContext<'_, '_> {
     /// See [`WriteSalvaContext`] for a safe alternative.
     fn deref_mut(&mut self) -> &mut Self::Target {
         // TODO: should we cache the result ?
-        self.salva_context.single_mut().into_inner()
+        self.salva_context.single_mut().unwrap().into_inner()
     }
 }
 
@@ -210,14 +224,14 @@ impl Deref for SalvaContextAccess<'_, '_> {
     type Target = SalvaContext;
 
     fn deref(&self) -> &Self::Target {
-        self.salva_context.single()
+        self.salva_context.single().unwrap()
     }
 }
 
 /// Utility [`SystemParam`] to easily access any [`SalvaContext`] mutably
-/// 
+///
 /// PERFORMANCE: this [`SystemParam`] queries ALL salva contexts mutably, which
-/// can limit the ability to parallelize systems in some cases. 
+/// can limit the ability to parallelize systems in some cases.
 #[derive(SystemParam)]
 pub struct WriteSalvaContext<'w, 's> {
     /// Query used to retrieve a [`SalvaContext`].
@@ -254,4 +268,3 @@ impl WriteSalvaContext<'_, '_> {
         self.salva_context.get_mut(salva_context_entity).ok()
     }
 }
-
